@@ -1,0 +1,16 @@
+media_directory : /Storage/Movies/Anime/
+# torrent_directory : /Storage/Movies/Anime/.Torrents/
+torrents :
+  04cae5c25bdc0e6070eb80d549634fca6a6338f3 :
+    source : magnet:?xt=urn:btih:ATFOLQS33QHGA4HLQDKUSY2PZJVGGOHT&tr=http://nyaa.tracker.wf:7777/announce&tr=udp://tracker.coppersurfer.tk:6969/announce&tr=udp://tracker.internetwarriors.net:1337/announce&tr=udp://tracker.leechers-paradise.org:6969/announce&tr=http://tracker.internetwarriors.net:1337/announce&tr=udp://tracker.opentrackr.org:1337/announce&tr=http://tracker.opentrackr.org:1337/announce&tr=udp://tracker.zer0day.to:1337/announce&tr=http://explodie.org:6969/announce&tr=http://p4p.arenabg.com:1337/announce&tr=udp://p4p.arenabg.com:1337/announce&tr=http://mgtracker.org:6969/announce&tr=udp://mgtracker.org:6969/announce
+    year : 2017
+    season : summer
+    link_to : In Progress/Vatican Kiseki Chousakan/[HorribleSubs] Vatican Kiseki Chousakan - 01 [720p].mkv
+
+---
+
+# media_directory : /Storage/Movies/Anime/
+# torrents :
+#   "In Progress/Vatican Kiseki Chousakan/[HorribleSubs] Vatican Kiseki Chousakan - 01 [720p].mkv" :
+#     
+
