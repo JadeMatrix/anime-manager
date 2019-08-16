@@ -1,16 +1,104 @@
-media_directory : /Storage/Movies/Anime/
-# torrent_directory : /Storage/Movies/Anime/.Torrents/
-torrents :
+directories :
+  media       : /home/jadematrix/anime_manager/Anime/
+  
+  # trash       : /home/jadematrix/anime_manager/Anime/.Trash/       # Defaults to ($media_directory)/.Trash/
+  # torrents    : /home/jadematrix/anime_manager/Anime/.Torrents/    # Defaults to ($media_directory)/.Torrents/
+  # in progress : /home/jadematrix/anime_manager/Anime/In Progress/  # Defaults to ($media_directory)/In Progress/
+  # archived    : /home/jadematrix/anime_manager/Anime/Archived/     # Defaults to ($media_directory)/Archived/
+  # rainy day   : /home/jadematrix/anime_manager/Anime/Rainy Day/    # Defaults to ($media_directory)/Rainy Day/
+
+shows :
+  in progress :
+    - &show31646
+      title   : 3-gatsu no Lion
+      seasons :
+        - year   : 2016
+          season : fall
+          mal    : 31646
+        - year   : 2017
+          season : fall
+          mal    : 35180
+    - &show31953
+      title   : New Game!
+      seasons :
+        - year   : 2016
+          season : summer
+          mal    : 31953
+          title  : New Game!
+        - year   : 2017
+          season : spring
+          mal    : 34277
+          title  : "New Game!: Watashi, Shain Ryokou tte Hajimete nano de…"
+        - year   : 2017
+          season : summer
+          mal    : 34914
+          title  : New Game!!
+  archived :
+    - &show34368
+      title   : Vatican Kiseki Chousakan
+      seasons : 
+        - year   : 2017
+          season : summer
+          mal    : 34368
+    - &show12355
+      title   : Ookami Kodomo no Ame to Yuki
+      seasons :
+        - year   : 2012
+          season : summer
+          mal    : 12355
+  rainy day : []
+
+torrents : #{}
+  # Single episode, single torrent, single file
   04cae5c25bdc0e6070eb80d549634fca6a6338f3 :
-    source : magnet:?xt=urn:btih:ATFOLQS33QHGA4HLQDKUSY2PZJVGGOHT&tr=http://nyaa.tracker.wf:7777/announce&tr=udp://tracker.coppersurfer.tk:6969/announce&tr=udp://tracker.internetwarriors.net:1337/announce&tr=udp://tracker.leechers-paradise.org:6969/announce&tr=http://tracker.internetwarriors.net:1337/announce&tr=udp://tracker.opentrackr.org:1337/announce&tr=http://tracker.opentrackr.org:1337/announce&tr=udp://tracker.zer0day.to:1337/announce&tr=http://explodie.org:6969/announce&tr=http://p4p.arenabg.com:1337/announce&tr=udp://p4p.arenabg.com:1337/announce&tr=http://mgtracker.org:6969/announce&tr=udp://mgtracker.org:6969/announce
-    year : 2017
-    season : summer
-    link_to : In Progress/Vatican Kiseki Chousakan/[HorribleSubs] Vatican Kiseki Chousakan - 01 [720p].mkv
-
----
-
-# media_directory : /Storage/Movies/Anime/
-# torrents :
-#   "In Progress/Vatican Kiseki Chousakan/[HorribleSubs] Vatican Kiseki Chousakan - 01 [720p].mkv" :
-#     
-
+    source   : magnet:?xt=urn:btih:ATFOLQS33QHGA4HLQDKUSY2PZJVGGOHT&tr=http://nyaa.tracker.wf:7777/announce&tr=udp://tracker.coppersurfer.tk:6969/announce&tr=udp://tracker.internetwarriors.net:1337/announce&tr=udp://tracker.leechers-paradise.org:6969/announce&tr=http://tracker.internetwarriors.net:1337/announce&tr=udp://tracker.opentrackr.org:1337/announce&tr=http://tracker.opentrackr.org:1337/announce&tr=udp://tracker.zer0day.to:1337/announce&tr=http://explodie.org:6969/announce&tr=http://p4p.arenabg.com:1337/announce&tr=udp://p4p.arenabg.com:1337/announce&tr=http://mgtracker.org:6969/announce&tr=udp://mgtracker.org:6969/announce
+    episodes :
+      - show    : *show34368
+        season  : 1
+        episode : 1
+        alt     : 720p
+  
+  # Multiple episodes, single torrent, multiple files
+  46f34348728c39e54dc4c4b1ade2e4d6500380ea :
+    source   : magnet:?xt=urn:btih:I3ZUGSDSRQ46KTOEYSY23YXE2ZIAHAHK&dn=%5BHorribleSubs%5D+3-gatsu+no+Lion+%5B1080p%5D+%28Unofficial+Batch%29&tr=http%3A%2F%2Fnyaa.tracker.wf%3A7777%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce
+    episodes :
+      - show    : *show31646
+        season  : 1
+        episode : 1
+        file    : "[HorribleSubs] 3-gatsu no Lion - 01 [1080p].mkv"
+        alt     : 1080p
+      - show    : *show31646
+        season  : 1
+        episode : 2
+        file    : "[HorribleSubs] 3-gatsu no Lion - 02 [1080p].mkv"
+        alt     : 1080p
+      # etc. ...
+    # TODO:
+    # episode map :
+    #   regex : "[HorribleSubs] 3-gatsu no Lion [1080p]/[HorribleSubs] 3-gatsu no Lion - (?P<episode>\d+) [1080p].mkv"
+    #   group : episode
+    #   alt   : 1080p
+  
+  # Single episode, multiple alt torrents
+  # 3a785c94c11f40836f3dc1af9bab2b0b09f3b14a :
+  #   source   : magnet:?xt=urn:btih:HJ4FZFGBD5AIG3Z5YGXZXKZLBME7HMKK&dn=%5BHorribleSubs%5D+3-gatsu+no+Lion+-+44+%5B720p%5D.mkv&tr=http%3A%2F%2Fnyaa.tracker.wf%3A7777%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce
+  #   episodes :
+  #     - show    : *show31646
+  #       season  : 2
+  #       episode : 22
+  #       alt     : 720p
+  743406fed52ce311bdcf824f5cc7af319a8df17f :
+    source   : magnet:?xt=urn:btih:OQ2AN7WVFTRRDPOPQJHVZR5PGGNI34L7&dn=%5BHorribleSubs%5D+3-gatsu+no+Lion+-+44+%5B1080p%5D.mkv&tr=http%3A%2F%2Fnyaa.tracker.wf%3A7777%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce
+    episodes :
+      - show    : *show31646
+        season  : 2
+        episode : 22
+        alt     : 1080p
+  
+  20ec237e64611fdfa7564b15a309b54af7932122 :
+    source   : magnet:?xt=urn:btih:EDWCG7TEMEP57J2WJMK2GCNVJL3ZGIJC&dn=%5BCommie%5D+Ookami+Kodomo+no+Ame+to+Yuki+v2+%5BBD+720p+AAC%5D+%5BE0D8ACBE%5D.mkv&tr=http%3A%2F%2Fnyaa.tracker.wf%3A7777%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969%2Fannounce
+    episodes :
+      - show    : *show12355
+        season  : 1
+        episode : 1
+        alt     : 720p
