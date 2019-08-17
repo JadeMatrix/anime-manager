@@ -7,9 +7,13 @@ import os
 import pathlib
 import sys
 import time
+
 import watchdog.observers
 import watchdog.events
 import yaml
+
+
+log = logging.getLogger( __name__ )
 
 
 class AbsPathAction( argparse.Action ):
@@ -81,6 +85,7 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
         self.database  = database
         self.cache_dir = cache_dir
         self.cache_db  = self.cache_dir / "flatdb_cache.yaml"
+        log.info( "checking database" )
         self.reload_database()
     
     def reload_database( self ):
@@ -88,10 +93,10 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
         try:
             with open( self.cache_db ) as old_db_file:
                 old_flatdb = yaml.full_load( old_db_file )
-                logging.info( "loaded flat database cache" )
+                log.info( "loaded flat database cache" )
         except IOError:
             old_flatdb = anime_manager.database.empty_flatdb()
-            logging.info( "no flat database cache, creating" )
+            log.info( "no flat database cache, creating" )
         
         # Load new database
         with open( self.database ) as db_file:
@@ -109,12 +114,12 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
         # Save new database as cache
         with open( self.cache_db, "w" ) as new_db_file:
             yaml.dump( new_flatdb, new_db_file )
-            logging.info( "saved new flat database cache" )
+            log.info( "saved new flat database cache" )
     
     def on_modified( self, event ):
-        logging.debug( "got event for " + str( event.src_path ) )
+        log.debug( "got event for " + str( event.src_path ) )
         if pathlib.Path( event.src_path ) == self.database:
-            logging.info( "reloading database" )
+            log.info( "reloading database" )
             self.reload_database()
 
 
@@ -131,7 +136,7 @@ def run( argv = sys.argv[ 1 : ] ):
         level = getattr( logging, args.log_level )
     )
     
-    logging.info( "starting" )
+    log.info( "starting" )
     
     observer = watchdog.observers.Observer()
     observer.schedule(
@@ -148,13 +153,13 @@ def run( argv = sys.argv[ 1 : ] ):
             time.sleep( 10 )
         
     except KeyboardInterrupt:
-        logging.info( "shutting down..." )
+        log.info( "shutting down..." )
         observer.stop()
         observer.join()
-        logging.info( "exited cleanly" )
+        log.info( "exited cleanly" )
     
     except Exception as e:
-        logging.exception( "exception thrown while waiting for observer" )
+        log.exception( "exception thrown while waiting for observer" )
         observer.stop()
         observer.join()
         exit( 1 )

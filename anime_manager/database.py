@@ -1,7 +1,11 @@
+import logging
 import pathlib
 import re
 
 import yaml
+
+
+log = logging.getLogger( __name__ )
 
 
 season_quarter_map = {

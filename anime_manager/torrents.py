@@ -1,19 +1,23 @@
 import logging
+
 import requests
+
+
+log = logging.getLogger( __name__ )
 
 
 def remove_links( links ):
     """
     """
     for link in links:
-        logging.debug( "Removing link {!r}".format( link.as_posix() ) )
+        log.debug( "Removing link {!r}".format( link.as_posix() ) )
 
 
 def add_links( links ):
     """
     """
     for link in links:
-        logging.debug( "Adding link {!r} -> {!r}".format(
+        log.debug( "Adding link {!r} -> {!r}".format(
             link[ "source" ].as_posix(),
             link[ "dest" ].as_posix()
         ) )
@@ -23,14 +27,14 @@ def remove_torrents( torrents ):
     """
     """
     for torrent in torrents:
-        logging.debug( "Removing torrent {}".format( torrent ) )
+        log.debug( "Removing torrent {}".format( torrent ) )
 
 
 def resource_torrents( torrents ):
     """
     """
     for torrent in torrents:
-        logging.debug( "Adding sources for torrent {!r} from {}".format(
+        log.debug( "Adding sources for torrent {!r} from {}".format(
             torrent[ "hash" ],
             tuple( torrent[ "sources" ] )
         ) )
@@ -40,7 +44,7 @@ def move_torrents( torrents ):
     """
     """
     for torrent in torrents:
-        logging.debug( "Moving torrent {} to {!r}".format(
+        log.debug( "Moving torrent {} to {!r}".format(
             torrent[ "hash" ],
             torrent[ "location" ].as_posix()
         ) )
@@ -50,7 +54,7 @@ def add_torrents( torrents ):
     """
     """
     for torrent in torrents:
-        logging.debug( "Adding torrent to {!r} from {}".format(
+        log.debug( "Adding torrent to {!r} from {}".format(
             torrent[ "location" ].as_posix(),
             tuple( torrent[ "sources" ] )
         ) )
