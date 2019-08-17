@@ -19,7 +19,8 @@ setuptools.setup(
     },
     
     install_requires = [
-        "watchdog",
-        "PyYAML"
+        "watchdog>=0.9",
+        "PyYAML>=5.1.2",
+        "requests>=2.22,<3",
     ]
 )

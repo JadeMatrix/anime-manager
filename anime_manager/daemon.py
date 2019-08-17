@@ -1,4 +1,5 @@
 import anime_manager.database
+import anime_manager.torrents
 
 import argparse
 import logging
@@ -100,33 +101,10 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
                 )
             )
         
-        # DEBUG:
-        print( yaml.dump( new_flatdb ) )
-        actions = anime_manager.database.diff( old_flatdb, new_flatdb )
-        for remove_link in actions[ "links" ][ "remove" ]:
-            print( "Removing link {!r}".format( remove_link.as_posix() ) )
-        for remove_torrent in actions[ "torrents" ][ "remove" ]:
-            print( "Removing torrent {}".format( remove_torrent ) )
-        for add_torrent in actions[ "torrents" ][ "add" ]:
-            print( "Adding torrent to {!r} from {}".format(
-                add_torrent[ "location" ].as_posix(),
-                tuple( add_torrent[ "sources" ] )
-            ) )
-        for source_torrent in actions[ "torrents" ][ "source" ]:
-            print( "Adding sources for torrent {!r} from {}".format(
-                source_torrent[ "hash" ],
-                tuple( source_torrent[ "sources" ] )
-            ) )
-        for move_torrent in actions[ "torrents" ][ "move" ]:
-            print( "Moving torrent {} to {!r}".format(
-                move_torrent[ "hash" ],
-                move_torrent[ "location" ].as_posix()
-            ) )
-        for add_link in actions[ "links" ][ "add" ]:
-            print( "Adding link {!r} -> {!r}".format(
-                add_link[ "source" ].as_posix(),
-                add_link[ "dest" ].as_posix()
-            ) )
+        # Make changes
+        anime_manager.torrents.execute_actions(
+            anime_manager.database.diff( old_flatdb, new_flatdb )
+        )
         
         # Save new database as cache
         with open( self.cache_db, "w" ) as new_db_file:

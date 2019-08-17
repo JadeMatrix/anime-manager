@@ -1,97 +1,67 @@
-import libtorrent
 import logging
-import os
-
-import pathlib
-
-import utils
+import requests
 
 
-libtorrent_state_strings = (
-    'queued',
-    'checking',
-    'downloading metadata',
-    'downloading',
-    'finished',
-    'seeding',
-    'allocating'
-)
-
-
-class Session:
-    
-    def __init__( self, ports = ( 6881, 6891 ) ):
-        self.session = session = libtorrent.session()
-        self.session.listen_on( *ports )
-        self.torrents = {}
-    
-    def __getitem__( self, hash ):
-        return self.torrents[ hash ]
-    
-    def __setitem__( self, hash, source_dest_pair ):
-        self.torrents[ hash ] = self.session.add_torrent( {
-            "url"          : source_dest_pair[ 0 ],
-            "save_path"    : source_dest_pair[ 1 ],
-            "storage_mode" : libtorrent.storage_mode_t.storage_mode_sparse
-        } )
-    
-    def __contains__( self, hash ):
-        return hash in self.torrents
-    
-    def __delitem__( self, hash ):
-        self.session.remove_torrent( self.torrents[ hash ] )
-        del self.torrents[ hash ]
-    
-    def __iter__( self ):
-        return dict.__iter__( self.torrents )
-    
-    def __len__( self ):
-        return len( self.torrents )
-
-
-def trash( save_to, db ):
+def remove_links( links ):
     """
-    
     """
-    
-    item_path = pathlib.PurePath( save_to )
-    
-    utils.mkdir_p( db[ "directories" ][ "trash" ] )
-    
-    trash_directory = pathlib.PurePath( db[ "directories" ][ "trash" ] )
-    trash_to = trash_directory / item_path.parts[ -1 ]
-    
-    append = 1
-    
-    while os.path.exists( trash_to.as_posix() ):
-        trash_to = trash_directory / "%s-%s" % (
-            item_path.parts[ -1 ],
-            append
-        )
-        append += 1
-    
-    os.rename(
-        item_path.as_posix(),
-        trash_to.as_posix()
-    )
-    
-    return trash_to.as_posix()
+    for link in links:
+        logging.debug( "Removing link {!r}".format( link.as_posix() ) )
 
 
-def remove_symlink( link_to, db ):
+def add_links( links ):
     """
-    
     """
-    
-    if os.path.islink( link_to ):
-        os.remove( link_to )
-    else:
-        trashed_to = trash( link_to, db )
-        logging.warning(
-            (
-                "expected %r to be a symlink, real file/directory found; it has"
-                " been moved to %r"
-            ),
-            link_to,
-            trashed_to
-        )
+    for link in links:
+        logging.debug( "Adding link {!r} -> {!r}".format(
+            link[ "source" ].as_posix(),
+            link[ "dest" ].as_posix()
+        ) )
+
+
+def remove_torrents( torrents ):
+    """
+    """
+    for torrent in torrents:
+        logging.debug( "Removing torrent {}".format( torrent ) )
+
+
+def resource_torrents( torrents ):
+    """
+    """
+    for torrent in torrents:
+        logging.debug( "Adding sources for torrent {!r} from {}".format(
+            torrent[ "hash" ],
+            tuple( torrent[ "sources" ] )
+        ) )
+
+
+def move_torrents( torrents ):
+    """
+    """
+    for torrent in torrents:
+        logging.debug( "Moving torrent {} to {!r}".format(
+            torrent[ "hash" ],
+            torrent[ "location" ].as_posix()
+        ) )
+
+
+def add_torrents( torrents ):
+    """
+    """
+    for torrent in torrents:
+        logging.debug( "Adding torrent to {!r} from {}".format(
+            torrent[ "location" ].as_posix(),
+            tuple( torrent[ "sources" ] )
+        ) )
+
+
+def execute_actions( actions ):
+    """
+    """
+    remove_links     ( actions[ "links"    ][ "remove" ] )
+    remove_torrents  ( actions[ "torrents" ][ "remove" ] )
+    add_torrents     ( actions[ "torrents" ][ "add"    ] )
+    resource_torrents( actions[ "torrents" ][ "source" ] )
+    move_torrents    ( actions[ "torrents" ][ "move"   ] )
+    add_links        ( actions[ "links"    ][ "add"    ] )
