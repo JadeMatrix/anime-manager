@@ -127,6 +127,11 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
                 add_link[ "source" ].as_posix(),
                 add_link[ "dest" ].as_posix()
             ) )
+        
+        # Save new database as cache
+        with open( self.cache_db, "w" ) as new_db_file:
+            yaml.dump( new_flatdb, new_db_file )
+            logging.info( "saved new flat database cache" )
     
     def on_modified( self, event ):
         logging.debug( "got event for " + str( event.src_path ) )
