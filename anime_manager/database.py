@@ -37,7 +37,7 @@ def open_and_normalize( filename ):
     
     try:
         with open( filename ) as db_file:
-            db = yaml.load( db_file )
+            db = yaml.full_load( db_file )
     except IOError:
         raise MissingDatabaseError( filename )
     

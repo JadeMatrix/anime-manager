@@ -8,12 +8,15 @@ setuptools.setup(
     author = "JadeMatrix",
     author_email = "jadematrix.art@gmail.com",
     description = (
-        "A daemon for automatically managing anime torrents in Deluge"
+        "A daemon for automatically managing anime torrents in Transmission"
     ),
     # long_description = ( "" ),
     url = "http://www.jadematrix.com/",
     
     packages = setuptools.find_packages(),
+    entry_points = {
+        "console_scripts" : [ "anime_manager = anime_manager.daemon:run" ],
+    },
     
     install_requires = [
         "watchdog",
