@@ -79,45 +79,54 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
         watchdog.events.FileSystemEventHandler.__init__( self )
         self.database  = database
         self.cache_dir = cache_dir
+        self.cache_db  = self.cache_dir / "flatdb_cache.yaml"
         self.reload_database()
     
     def reload_database( self ):
         # Load cached flat database
         try:
-            with open( self.cache_dir / "database_cache.yaml" ) as old_db_file:
+            with open( self.cache_db ) as old_db_file:
                 old_flatdb = yaml.full_load( old_db_file )
                 logging.info( "loaded flat database cache" )
         except IOError:
-            old_flatdb = anime_manager.database.empty_flat_database()
+            old_flatdb = anime_manager.database.empty_flatdb()
             logging.info( "no flat database cache, creating" )
         
         # Load new database
-        new_db = anime_manager.database.open_and_normalize( self.database )
+        with open( self.database ) as db_file:
+            new_flatdb = anime_manager.database.flatten(
+                anime_manager.database.normalize(
+                    yaml.full_load( db_file )
+                )
+            )
         
-        # 3-way diff (new/old/both) on torrent hashes
-        (
-            hashes_new,
-            hashes_old,
-            hashes_in_both,
-        ) = anime_manager.database.torrent_hash_diff(
-            new_db,
-            old_flatdb
-        )
-        
-        pass
-        
-        logging.info(
-            "adding torrents: %s",
-            hashes_new
-        )
-        logging.info(
-            "removing torrents: %s",
-            hashes_old
-        )
-        logging.info(
-            "in-both torrents: %s",
-            hashes_in_both
-        )
+        # DEBUG:
+        print( yaml.dump( new_flatdb ) )
+        actions = anime_manager.database.diff( old_flatdb, new_flatdb )
+        for remove_link in actions[ "links" ][ "remove" ]:
+            print( "Removing link {!r}".format( remove_link.as_posix() ) )
+        for remove_torrent in actions[ "torrents" ][ "remove" ]:
+            print( "Removing torrent {}".format( remove_torrent ) )
+        for add_torrent in actions[ "torrents" ][ "add" ]:
+            print( "Adding torrent to {!r} from {}".format(
+                add_torrent[ "location" ].as_posix(),
+                tuple( add_torrent[ "sources" ] )
+            ) )
+        for source_torrent in actions[ "torrents" ][ "source" ]:
+            print( "Adding sources for torrent {!r} from {}".format(
+                source_torrent[ "hash" ],
+                tuple( source_torrent[ "sources" ] )
+            ) )
+        for move_torrent in actions[ "torrents" ][ "move" ]:
+            print( "Moving torrent {} to {!r}".format(
+                move_torrent[ "hash" ],
+                move_torrent[ "location" ].as_posix()
+            ) )
+        for add_link in actions[ "links" ][ "add" ]:
+            print( "Adding link {!r} -> {!r}".format(
+                add_link[ "source" ].as_posix(),
+                add_link[ "dest" ].as_posix()
+            ) )
     
     def on_modified( self, event ):
         logging.debug( "got event for " + str( event.src_path ) )
@@ -138,27 +147,6 @@ def run( argv = sys.argv[ 1 : ] ):
         ),
         level = getattr( logging, args.log_level )
     )
-    
-    """
-    
-    - on startup & each time database changes:
-        X load cached flat database
-        X load new database
-        X 3-way diff (new/old/both) on torrent hashes
-        X remove old torrents from libtorrent session
-        X move old torrent files to trash directory
-        X remove old torrent symlinks (including any now-empty folders)
-        - if startup:
-            - add "both" torrents to session
-        - add "new" torrents to session
-        - wait for metadata for all torrents (this may take a while) -----------
-        - generate flat database from new using metadata
-        - flat diff (new/moved)
-        - move moved symlinks
-        - add new symlinks
-        - write new flat database to cache
-    
-    """
     
     logging.info( "starting" )
     
