@@ -130,6 +130,10 @@ def trash_item( item, trash_directory ):
     """
     
     if trash_directory is None:
+        log.info( "deleting {!r}".format(
+            item,
+            trashed_path
+        ) )
         if item.is_dir():
             shutil.rmtree( item )
         else:
@@ -140,12 +144,28 @@ def trash_item( item, trash_directory ):
             / str( uuid.uuid4() )
             / item
         )
-        log.info( "trashing item {!r} to {!r}".format(
+        log.info( "trashing {!r} to {!r}".format(
             item,
             trashed_path
         ) )
         trashed_path.parent.mkdir( parents = True )
         item.rename( trashed_path )
+
+
+def ensure_not_exists( item, trash ):
+    """Ensure a path or file does not exist
+    
+    If the path or file exists, log a warning & trash it
+    
+    Args:
+        item (pathlib.Path):        Item in question
+        trash (pathlib.Path|None):  Trash directory (see `trash_item()`)
+    """
+    if item.exists():
+        log.warning( "{!r} exists but should not, trashing".format(
+            link.as_posix()
+        ) )
+        trash_item( link, trash )
 
 
 def remove_links( server, links, trash ):
@@ -161,20 +181,10 @@ def remove_links( server, links, trash ):
     
     for link in links:
         log.debug( "removing link {!r}".format( link.as_posix() ) )
-        
         if link.is_symlink():
             link.unlink()
-        elif link.exists():
-            log.warning(
-                "attempt to remove link {!r} (not a link), trashing".format(
-                    link.as_posix()
-                )
-            )
-            trash_item( link, trash )
         else:
-            log.debug( "not removing nonexistent link {!r}".format(
-                link.as_posix()
-            ) )
+            ensure_not_exists( link, trash )
 
 
 def add_links( server, links, trash ):
@@ -201,6 +211,8 @@ def add_links( server, links, trash ):
             link[ "dest" ].as_posix()
         ) )
         
+        ensure_not_exists( link[ "dest" ], trash )
+        
         link[ "dest" ].parent.mkdir( parents = True, exist_ok = True )
         link[ "dest" ].symlink_to( source )
 
@@ -218,7 +230,21 @@ def remove_torrents( server, torrents, trash ):
     
     for hash in torrents:
         log.debug( "removing torrent {}".format( hash ) )
+    
     if torrents:
+        locations = rpc(
+            server,
+            "torrent-get",
+            {
+                "ids"    : ( match.group( 1 ), ),
+                "fields" : ( "downloadDir", "name", ),
+            }
+        )[ "torrents" ]
+        for location in locations:
+            trash_item(
+                pathlib.Path( location[ "downloadDir" ] ) / location[ "name" ],
+                trash
+            )
         rpc(
             server,
             "torrent-remove",
