@@ -4,6 +4,7 @@ import itertools
 import json
 import logging
 import pathlib
+import shutil
 import re
 import uuid
 
@@ -94,20 +95,26 @@ def replace_placeholder_filename( server, path ):
     return pathlib.Path( *new_path )
 
 
-def trash_item( trash_directory, item ):
+def trash_item( item, trash_directory ):
     """
     """
-    trashed_path = (
-        trash_directory
-        / str( uuid.uuid4() )
-        / item
-    )
-    log.info( "trashing item {!r} to {!r}".format(
-        item,
-        trashed_path
-    ) )
-    trashed_path.parent.mkdir( parents = True )
-    item.rename( trashed_path )
+    if trash_directory is None:
+        if item.is_dir():
+            shutil.rmtree( item )
+        else:
+            item.unlink()
+    else:
+        trashed_path = (
+            trash_directory
+            / str( uuid.uuid4() )
+            / item
+        )
+        log.info( "trashing item {!r} to {!r}".format(
+            item,
+            trashed_path
+        ) )
+        trashed_path.parent.mkdir( parents = True )
+        item.rename( trashed_path )
 
 
 def remove_links( server, links, trash ):
@@ -124,7 +131,7 @@ def remove_links( server, links, trash ):
                     link.as_posix()
                 )
             )
-            trash_item( trash, link )
+            trash_item( link, trash )
         else:
             log.debug( "not removing nonexistent link {!r}".format(
                 link.as_posix()

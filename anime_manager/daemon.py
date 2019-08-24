@@ -76,16 +76,23 @@ parser.add_argument(
     help     = "standard Python logging level to use",
     required = False
 )
+parser.add_argument(
+    "--no-trash",
+    action   = "store_true",
+    help     = "when removing files/directories, delete rather than trash them",
+    required = False
+)
 
 
 class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
     
-    def __init__( self, database, cache_dir, server ):
+    def __init__( self, database, cache_dir, server, no_trash ):
         watchdog.events.FileSystemEventHandler.__init__( self )
         self.database  = database
         self.cache_dir = cache_dir
         self.cache_db  = self.cache_dir / "flatdb_cache.yaml"
         self.server    = server
+        self.no_trash  = no_trash
         log.info( "checking database" )
         self.reload_database()
     
@@ -104,7 +111,10 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
             new_db = anime_manager.database.normalize(
                 yaml.full_load( db_file )
             )
-            trash_directory = new_db[ "directories" ][ "trash" ]
+            trash_directory = (
+                None if self.no_trash
+                else new_db[ "directories" ][ "trash" ]
+            )
             new_flatdb = anime_manager.database.flatten( new_db )
             del new_db
         
@@ -147,7 +157,8 @@ def run( argv = sys.argv[ 1 : ] ):
         AutoManageTorrentsHandler(
             args.database,
             args.cache_dir,
-            args.transmission
+            args.transmission,
+            args.no_trash
         ),
         args.database.parent.as_posix()
     )
