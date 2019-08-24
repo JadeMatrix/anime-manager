@@ -34,7 +34,21 @@ class RPCError( Exception ):
 
 
 def rpc( server, method, arguments ):
-    """
+    """Perform a Transmission RPC
+    
+    Args:
+        server (str):       Address (+ port) of the Transmission server
+        method (str):       Transmission RPC method name
+        arguments (str):    Arguments to pass in the RPC
+    
+    Returns:
+        The contents of the "arguments" field in the response, parsed from JSON
+    
+    Raises:
+        RPCError:   An error occurred regarding the contents of the payload
+        requests.exceptions.RequestException:
+                    An error occurred sending the request or receiving the
+                    response
     """
     
     global session
@@ -74,7 +88,17 @@ def rpc( server, method, arguments ):
 
 
 def replace_placeholder_filename( server, path ):
-    """
+    """Replace a torrent download name placeholder in a path
+    
+    See `database.placeholder_filename()`
+    
+    Args:
+        server (str):           Address (+ port) of the Transmission server
+        path (pathlib.Path):    Path potentially containing a torrent download
+                                name placeholder
+    
+    Returns:
+        pathlib.Path:   Proper path with placeholders replaced
     """
     
     new_path = []
@@ -96,8 +120,17 @@ def replace_placeholder_filename( server, path ):
 
 
 def trash_item( item, trash_directory ):
+    """Move an item to the specified trash directory
+    
+    Offered as a safer alternative to simply deleting
+    
+    Args:
+        item (pathlib.Path):    Item (file, directory) to trash
+        trash_directory (pathlib.Path|None)
+                                Trash directory; if None, item is removed
+                                instead
     """
-    """
+    
     if trash_directory is None:
         if item.is_dir():
             shutil.rmtree( item )
@@ -118,8 +151,16 @@ def trash_item( item, trash_directory ):
 
 
 def remove_links( server, links, trash ):
+    """Execute a set of remove-symlink actions
+    
+    Args:
+        server (str):   Address (+ port) of the Transmission server
+        links (iterable[pathlib.Path]):
+                        Set of remove-symlink actions (paths to remove)
+        trash (pathlib.Path|None):
+                        Trash directory (see `trash_item()`)
     """
-    """
+    
     for link in links:
         log.debug( "removing link {!r}".format( link.as_posix() ) )
         
@@ -139,8 +180,21 @@ def remove_links( server, links, trash ):
 
 
 def add_links( server, links, trash ):
+    """Execute a set of add-symlink actions
+    
+    Args:
+        server (str):   Address (+ port) of the Transmission server
+        links (iterable):
+                        Set of add-symlink actions, each in the form:
+                            {
+                                "source" : pathlib.Path,
+                                "dest"   : pathlib.Path,
+                            }
+                        where "dest" will point to "source"
+        trash (pathlib.Path|None):
+                        Trash directory (see `trash_item()`)
     """
-    """
+    
     for link in links:
         source = replace_placeholder_filename( server, link[ "source" ] )
         
@@ -154,8 +208,16 @@ def add_links( server, links, trash ):
 
 
 def remove_torrents( server, torrents, trash ):
+    """Execute a set of remove-torrent actions
+    
+    Args:
+        server (str):   Address (+ port) of the Transmission server
+        torrents (iterable[str]):
+                        Set of remove-torrent actions (torrent hashes)
+        trash (pathlib.Path|None):
+                        Trash directory (see `trash_item()`)
     """
-    """
+    
     for hash in torrents:
         log.debug( "removing torrent {}".format( hash ) )
     if torrents:
@@ -170,7 +232,18 @@ def remove_torrents( server, torrents, trash ):
 
 
 def resource_torrents( server, torrents, trash ):
-    """
+    """Execute a set of re-source-torrent actions
+    
+    Args:
+        server (str):   Address (+ port) of the Transmission server
+        torrents (iterable):
+                        Set of re-source-torrent actions, each in the form:
+                            {
+                                "hash"    : str,
+                                "sources" : { str, ... }
+                            }
+        trash (pathlib.Path|None):
+                        Trash directory (see `trash_item()`)
     """
     for torrent in torrents:
         log.debug( "adding sources for torrent {!r} from {}".format(
@@ -180,7 +253,18 @@ def resource_torrents( server, torrents, trash ):
 
 
 def move_torrents( server, torrents, trash ):
-    """
+    """Execute a set of move-torrent actions
+    
+    Args:
+        server (str):   Address (+ port) of the Transmission server
+        torrents (iterable):
+                        Set of move-torrent actions, each in the form:
+                            {
+                                "hash"     : str,
+                                "location" : pathlib.Path,
+                            }
+        trash (pathlib.Path|None):
+                        Trash directory (see `trash_item()`)
     """
     for torrent in torrents:
         log.debug( "moving torrent {} to {!r}".format(
@@ -199,7 +283,18 @@ def move_torrents( server, torrents, trash ):
 
 
 def add_torrents( server, torrents, trash ):
-    """
+    """Execute a set of add-torrent actions
+    
+    Args:
+        server (str):   Address (+ port) of the Transmission server
+        torrents (iterable):
+                        Set of add-torrent actions, each in the form:
+                            {
+                                "sources"  : { str, ... },
+                                "location" : pathlib.Path,
+                            }
+        trash (pathlib.Path|None):
+                        Trash directory (see `trash_item()`)
     """
     for torrent in torrents:
         sources = tuple( torrent[ "sources" ] )
@@ -224,7 +319,13 @@ def add_torrents( server, torrents, trash ):
 
 
 def execute_actions( server, actions, trash ):
-    """
+    """Execute a set of actions as output by `database.diff()`
+    
+    Args:
+        server (str):   Address (+ port) of the Transmission server
+        actions (dict): The set of actions
+        trash (pathlib.Path|None):
+                        Trash directory (see `trash_item()`)
     """
     remove_links     ( server, actions[ "links"    ][ "remove" ], trash )
     remove_torrents  ( server, actions[ "torrents" ][ "remove" ], trash )

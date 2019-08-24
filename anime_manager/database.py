@@ -28,8 +28,16 @@ class InvalidDatabaseError( Exception ):
 
 
 def year_quarter_for_torrent( db, hash ):
-    """
+    """Generate a standardized year-quarter subdirectory name for a torrent
     
+    Args:
+        db (dict):  A full, unflattened database
+        hash (str): The torrent hash
+    
+    Returns:
+        str:    A string such as "2016q1" where the year and quarter (season)
+                are the first time a file in that torrent are linked as an
+                episode
     """
     
     min_torrent_year    = 99999
@@ -52,7 +60,15 @@ def year_quarter_for_torrent( db, hash ):
 
 
 def show_link_for_episode( db, episode ):
-    """
+    """Generate an appropriate path for an episode within a season within a show
+    
+    Args:
+        db (dict):      A full, unflattened database
+        episode (dict): The relevant episode database entry
+    
+    Returns:
+        pathlib.Path:   The filename and path to which to symlink the episode
+                        (relative to the appropriate status directory)
     """
     
     show = episode[ "show" ]
@@ -104,13 +120,38 @@ def show_link_for_episode( db, episode ):
 
 
 def placeholder_filename( hash, location, file ):
-    """
+    """Generate a placeholder path to a file in a torrent with no metadata yet
+    
+    See `torrents.replace_placeholder_filename()`
+    
+    Args:
+        hash (str):                 The parent torrent's hash
+        location (pathlib.Path):    The parent torrent's download location
+        file (str|pathlib.Path):    The file in the torrent (or "." for the
+                                    entire torrent)
+    
+    Returns:
+        pathlib.Path:   A path that can have the torrent download name placed in
+                        it later once metadata is available / download starts
     """
     return location / name_placeholder.format( hash ) / file
 
 
 def relative_link_pair( source, dest ):
-    """
+    """Create an 'add-link' action so that the source is relative, if possible
+    
+    Args:
+        source (pathlib.Path):  The target of the symlink, as cached (fully
+                                prefixed up to the media directory)
+        dest (pathlib.Path):    The filename & path of the symlink (fully
+                                prefixed up to the media directory)
+    
+    Returns:
+        dict:   An 'add-link' action:
+            {
+                "source" : pathlib.Path,
+                "dest"   : pathlib.Path,
+            }
     """
     common_path = pathlib.Path( os.path.commonpath( ( source, dest ) ) )
     if common_path != common_path.root:
@@ -119,7 +160,10 @@ def relative_link_pair( source, dest ):
 
 
 def empty_database():
-    """Return an empty database structure
+    """Get an empty full database
+    
+    Returns:
+        dict
     """
     
     return {
@@ -140,16 +184,27 @@ def empty_database():
 
 
 def empty_flatdb():
-    """
+    """Get an empty flat database
     
+    Returns:
+        dict
     """
     
     return {}
 
 
 def normalize( db ):
-    """
+    """Normalize a full database, adding missing optional/implicit fields
     
+    Args:
+        db (dict):  A full database
+    
+    Returns:
+        dict:   A full(er) database
+    
+    Raises:
+        InvalidDatabaseError:   A field is malformed or is missing and could not
+                                be resolved
     """
     
     for field in (
@@ -315,7 +370,13 @@ def normalize( db ):
 
 
 def flatten( db ):
-    """
+    """Turn a full database into a form suitable for caching (flat database)
+    
+    Args:
+        db (dict):  A full database
+    
+    Returns:
+        dict:   A flat database
     """
     
     flatdb = empty_flatdb()
@@ -353,7 +414,38 @@ def flatten( db ):
 
 
 def diff( old, new ):
-    """
+    """Diff two flat databases by generating a set of actions to perform
+    
+    Args:
+        old (dict): Previous flat database
+        new (dict): Replacement flat database
+    
+    Returns:
+        dict:   A set of actions in the form:
+            {
+                "links" : {
+                    "remove" : [ pathlib.Path, ... ],
+                    "add"    : [
+                        { "source" : pathlib.Path, "dest" : pathlib.Path, },
+                        ...
+                    ],
+                },
+                "torrents" : {
+                    "remove" : [ hash (str), ... ],
+                    "source" : [
+                        { "hash" : str, "sources" : set[str], },
+                        ...
+                    ],
+                    "move"   : [
+                        { "hash" : str, "location" : pathlib.Path },
+                        ...
+                    ],
+                    "add"    : [
+                        { "source" : str, "location" : pathlib.Path, },
+                        ...
+                    ],
+                },
+            }
     """
     
     old_hashes = set( old.keys() )
