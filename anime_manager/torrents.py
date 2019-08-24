@@ -290,11 +290,13 @@ def move_torrents( server, torrents, trash ):
         trash (pathlib.Path|None):
                         Trash directory (see `trash_item()`)
     """
+    
     for torrent in torrents:
         log.debug( "moving torrent {} to {!r}".format(
             torrent[ "hash" ],
             torrent[ "location" ].as_posix()
         ) )
+        
         rpc(
             server,
             "torrent-set-location",
@@ -320,6 +322,7 @@ def add_torrents( server, torrents, trash ):
         trash (pathlib.Path|None):
                         Trash directory (see `trash_item()`)
     """
+    
     for torrent in torrents:
         sources = tuple( torrent[ "sources" ] )
         if len( sources ) != 1:
@@ -328,10 +331,12 @@ def add_torrents( server, torrents, trash ):
                     len( source )
                 )
             )
+        
         log.debug( "adding torrent to {!r} from {}".format(
             torrent[ "location" ].as_posix(),
             sources
         ) )
+        
         rpc(
             server,
             "torrent-add",
