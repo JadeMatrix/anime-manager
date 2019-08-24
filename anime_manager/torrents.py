@@ -83,8 +83,6 @@ def rpc( server, method, arguments ):
         raise RPCError( server, response_content[ "result" ], message )
     
     return response_content[ "arguments" ]
-    
-    return {}
 
 
 def replace_placeholder_filename( server, path ):

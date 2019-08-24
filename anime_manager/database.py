@@ -53,10 +53,7 @@ def year_quarter_for_torrent( db, hash ):
         if quarter < min_torrent_quarter:
             min_torrent_quarter = quarter
     
-    return "%(year)s%(quarter)s" % {
-        "year"    : min_torrent_year,
-        "quarter" : min_torrent_quarter,
-    }
+    return "{}{}".format( min_torrent_year, min_torrent_quarter )
 
 
 def show_link_for_episode( db, episode ):

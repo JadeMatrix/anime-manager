@@ -40,7 +40,7 @@ parser.add_argument(
 parser.add_argument(
     "-t",
     "--transmission",
-    metavar  = "ADDRESS:PORT",
+    metavar  = "ADDRESS[:PORT]",
     help     = "Transmission RPC server to use",
     required = True
 )
