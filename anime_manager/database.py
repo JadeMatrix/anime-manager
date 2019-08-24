@@ -1,4 +1,5 @@
 import logging
+import os.path
 import pathlib
 import re
 
@@ -14,7 +15,8 @@ season_quarter_map = {
     "summer" : "q3",
     "fall"   : "q4"
 }
-name_placeholder = "$NAME$"
+hash_regex = r"[0-9a-fA-F]{40}"
+name_placeholder = "$NAME:{}$"
 
 
 class InvalidDatabaseError( Exception ):
@@ -101,10 +103,19 @@ def show_link_for_episode( db, episode ):
     return link
 
 
-def placeholder_filename( location, file ):
+def placeholder_filename( hash, location, file ):
     """
     """
-    return location / name_placeholder / file
+    return location / name_placeholder.format( hash ) / file
+
+
+def relative_link_pair( source, dest ):
+    """
+    """
+    common_path = pathlib.Path( os.path.commonpath( ( source, dest ) ) )
+    if common_path != common_path.root:
+        source = pathlib.Path( os.path.relpath( source, dest.parent ) )
+    return { "source" : source, "dest" : dest }
 
 
 def empty_database():
@@ -153,10 +164,10 @@ def normalize( db ):
     
     # Normalize directories ####################################################
     
-    if "media" in db[ "directories" ]:
-        db[ "directories" ][ "media" ] = pathlib.Path(
-            db[ "directories" ][ "media" ]
-        )
+    db[ "directories" ][ "media" ] = pathlib.Path(
+        db[ "directories" ][ "media" ] if "media" in db[ "directories" ]
+        else "."
+    )
     
     for field in (
         ( "trash"      , ".Trash"     , ),
@@ -166,22 +177,13 @@ def normalize( db ):
         ( "rainy day"  , "Rainy Day"  , ),
     ):
         if field[ 0 ] in db[ "directories" ]:
-            db[ "directories" ][ field[ 0 ] ] = pathlib.Path(
-                db[ "directories" ][ field[ 0 ] ]
-            )
-        elif "media" in db[ "directories" ]:
-            db[ "directories" ][ field[ 0 ] ] = (
-                db[ "directories" ][ "media" ] / field[ 1 ]
-            )
+            directory = pathlib.Path( db[ "directories" ][ field[ 0 ] ]  )
         else:
-            raise InvalidDatabaseError( (
-                "missing required field [{0!r}][{1!r}] and no fallback "
-                "base [{0!r}][{2!r}]"
-            ).format(
-                "directories",
-                field[ 0 ],
-                "media"
-            ) )
+            directory = pathlib.Path( field[ 1 ] )
+        if not directory.is_absolute():
+            # Doesn't matter if media directory is absolute or not
+            directory = db[ "directories" ][ "media" ] / directory
+        db[ "directories" ][ field[ 0 ] ] = directory
     
     # Normalize torrents & shows ###############################################
     
@@ -190,7 +192,7 @@ def normalize( db ):
     
     for torrent_hash, torrent_config in db[ "torrents" ].items():
         if not re.match(
-            r"^[0-9a-f]{40}$",
+            r"^{}$".format( hash_regex ),
             torrent_hash
         ):
             raise InvalidDatabaseError(
@@ -337,10 +339,15 @@ def flatten( db ):
                 filename = episode[ "file" ]
             else:
                 filename = pathlib.Path()
+            
             flatdb[ hash ][ "files" ][
                 db[ "directories" ][ stati[ episode[ "show" ][ "title" ] ] ]
                 / show_link_for_episode( db, episode )
-            ] = filename
+            ] = (
+                flatdb[ hash ][ "location" ]
+                / name_placeholder.format( hash )
+                / filename
+            )
     
     return flatdb
 
@@ -371,13 +378,14 @@ def diff( old, new ):
             "location" : new[ hash ][ "location" ],
         } )
         for dest, source in new[ hash ][ "files" ].items():
-            actions[ "links" ][ "add" ].append( {
-                "source" : placeholder_filename(
+            actions[ "links" ][ "add" ].append( relative_link_pair(
+                placeholder_filename(
+                    hash,
                     new[ hash ][ "location" ],
                     source
                 ),
-                "dest"   : dest
-            } )
+                dest
+            ) )
     
     for hash in old_hashes - new_hashes:
         actions[ "torrents" ][ "remove" ].append( hash )
@@ -389,26 +397,27 @@ def diff( old, new ):
         if new_sources:
             actions[ "torrents" ][ "source" ].append( {
                 "hash"    : hash,
-                "sources" : new_sources
+                "sources" : new_sources,
             } )
         
         if new[ hash ][ "location" ] != old[ hash ][ "location" ]:
             actions[ "torrents" ][ "move" ].append( {
                 "hash"     : hash,
-                "location" : new[ hash ][ "location" ]
+                "location" : new[ hash ][ "location" ],
             } )
         
         old_links = set( old[ hash ][ "files" ].keys() )
         new_links = set( new[ hash ][ "files" ].keys() )
         
         for link in new_links - old_links:
-            actions[ "links" ][ "add" ].append( {
-                "source" : placeholder_filename(
+            actions[ "links" ][ "add" ].append( relative_link_pair(
+                placeholder_filename(
+                    hash,
                     new[ hash ][ "location" ],
                     new[ hash ][ "files" ][ link ]
                 ),
-                "dest"   : link
-            } )
+                link
+            ) )
         
         for link in old_links - new_links:
             actions[ "links" ][ "remove" ].append( link )
@@ -416,13 +425,14 @@ def diff( old, new ):
         for link in old_links & new_links:
             if new[ hash ][ "files" ][ link ] != old[ hash ][ "files" ][ link ]:
                 actions[ "links" ][ "remove" ].append( link )
-                actions[ "links" ][ "add" ].append( {
-                    "source" : placeholder_filename(
+                actions[ "links" ][ "add" ].append( relative_link_pair(
+                    placeholder_filename(
+                        hash,
                         new[ hash ][ "location" ],
                         new[ hash ][ "files" ][ link ]
                     ),
-                    "dest"   : link
-                } )
+                    link
+                ) )
     
     return actions
 

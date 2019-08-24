@@ -80,18 +80,19 @@ parser.add_argument(
 
 class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
     
-    def __init__( self, database, cache_dir ):
+    def __init__( self, database, cache_dir, server ):
         watchdog.events.FileSystemEventHandler.__init__( self )
         self.database  = database
         self.cache_dir = cache_dir
         self.cache_db  = self.cache_dir / "flatdb_cache.yaml"
+        self.server    = server
         log.info( "checking database" )
         self.reload_database()
     
     def reload_database( self ):
         # Load cached flat database
         try:
-            with open( self.cache_db ) as old_db_file:
+            with open( self.cache_db, encoding = "utf8" ) as old_db_file:
                 old_flatdb = yaml.full_load( old_db_file )
                 log.info( "loaded flat database cache" )
         except IOError:
@@ -99,16 +100,19 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
             log.info( "no flat database cache, creating" )
         
         # Load new database
-        with open( self.database ) as db_file:
-            new_flatdb = anime_manager.database.flatten(
-                anime_manager.database.normalize(
-                    yaml.full_load( db_file )
-                )
+        with open( self.database, encoding = "utf8" ) as db_file:
+            new_db = anime_manager.database.normalize(
+                yaml.full_load( db_file )
             )
+            trash_directory = new_db[ "directories" ][ "trash" ]
+            new_flatdb = anime_manager.database.flatten( new_db )
+            del new_db
         
         # Make changes
         anime_manager.torrents.execute_actions(
-            anime_manager.database.diff( old_flatdb, new_flatdb )
+            self.server,
+            anime_manager.database.diff( old_flatdb, new_flatdb ),
+            trash_directory
         )
         
         # Save new database as cache
@@ -117,7 +121,7 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
             log.info( "saved new flat database cache" )
     
     def on_modified( self, event ):
-        log.debug( "got event for " + str( event.src_path ) )
+        log.debug( "got event for {}".format( event.src_path ) )
         if pathlib.Path( event.src_path ) == self.database:
             log.info( "reloading database" )
             self.reload_database()
@@ -143,6 +147,7 @@ def run( argv = sys.argv[ 1 : ] ):
         AutoManageTorrentsHandler(
             args.database,
             args.cache_dir,
+            args.transmission
         ),
         args.database.parent.as_posix()
     )
