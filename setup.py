@@ -15,7 +15,10 @@ setuptools.setup(
     
     packages = setuptools.find_packages(),
     entry_points = {
-        "console_scripts" : [ "anime_manager = anime_manager:run" ],
+        "console_scripts" : [
+            "anime-manager-update = anime_manager:run_update",
+            "anime-manager-daemon = anime_manager:run_daemon",
+        ],
     },
     
     install_requires = [

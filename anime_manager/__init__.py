@@ -16,63 +16,12 @@ import yaml
 log = logging.getLogger( __name__ )
 
 
-class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
+def configure_logging( args ):
+    """Configure logging based on command-line arguments
     
-    def __init__( self, database, cache_dir, server, no_trash ):
-        watchdog.events.FileSystemEventHandler.__init__( self )
-        self.database  = database
-        self.cache_dir = cache_dir
-        self.cache_db  = self.cache_dir / "flatdb_cache.yaml"
-        self.server    = server
-        self.no_trash  = no_trash
-        log.info( "checking database" )
-        self.reload_database()
-    
-    def reload_database( self ):
-        # Load cached flat database
-        try:
-            with open( self.cache_db, encoding = "utf8" ) as old_db_file:
-                old_flatdb = yaml.full_load( old_db_file )
-                log.info( "loaded flat database cache" )
-        except IOError:
-            old_flatdb = anime_manager.database.empty_flatdb()
-            log.info( "no flat database cache, creating" )
-        
-        # Load new database
-        with open( self.database, encoding = "utf8" ) as db_file:
-            new_db = anime_manager.database.normalize(
-                yaml.full_load( db_file )
-            )
-            trash_directory = (
-                None if self.no_trash
-                else new_db[ "directories" ][ "trash" ]
-            )
-            new_flatdb = anime_manager.database.flatten( new_db )
-            del new_db
-        
-        # Make changes
-        anime_manager.torrents.execute_actions(
-            self.server,
-            anime_manager.database.diff( old_flatdb, new_flatdb ),
-            trash_directory
-        )
-        
-        # Save new database as cache
-        with open( self.cache_db, "w" ) as new_db_file:
-            yaml.dump( new_flatdb, new_db_file )
-            log.info( "saved new flat database cache" )
-    
-    def on_modified( self, event ):
-        log.debug( "got event for {}".format( event.src_path ) )
-        if pathlib.Path( event.src_path ) == self.database:
-            log.info( "reloading database" )
-            self.reload_database()
-
-
-def run( argv = sys.argv[ 1 : ] ):
-    args = anime_manager.arguments.parser.parse_args( argv )
-    
-    args.cache_dir.mkdir( parents = True, exist_ok = True )
+    Args:
+        args (iterable):    Command-line arguments (see `arguments` submodule)
+    """
     
     logging.basicConfig(
         filename = (
@@ -81,17 +30,96 @@ def run( argv = sys.argv[ 1 : ] ):
         ),
         level = getattr( logging, args.log_level )
     )
+
+
+def reload_database( args ):
+    """Run a single database update
+    
+    Args:
+        args (iterable):    Command-line arguments (see `arguments` submodule)
+    """
+    
+    args.cache_dir.mkdir( parents = True, exist_ok = True )
+    
+    cache_db = args.cache_dir / "flatdb_cache.yaml"
+    
+    # Load cached flat database
+    try:
+        with open( cache_db, encoding = "utf8" ) as old_db_file:
+            old_flatdb = yaml.full_load( old_db_file )
+            log.info( "loaded flat database cache" )
+    except IOError:
+        old_flatdb = anime_manager.database.empty_flatdb()
+        log.info( "no flat database cache, creating" )
+    
+    # Load new database
+    with open( args.database, encoding = "utf8" ) as db_file:
+        new_db = anime_manager.database.normalize(
+            yaml.full_load( db_file )
+        )
+        trash_directory = (
+            None if args.no_trash
+            else new_db[ "directories" ][ "trash" ]
+        )
+        new_flatdb = anime_manager.database.flatten( new_db )
+        del new_db
+    
+    # Make changes
+    anime_manager.torrents.execute_actions(
+        args.transmission,
+        anime_manager.database.diff( old_flatdb, new_flatdb ),
+        trash_directory
+    )
+    
+    # Save new database as cache
+    with open( cache_db, "w" ) as new_db_file:
+        yaml.dump( new_flatdb, new_db_file )
+        log.info( "saved new flat database cache" )
+
+
+class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
+    
+    def __init__( self, args ):
+        watchdog.events.FileSystemEventHandler.__init__( self )
+        self.args = args
+        log.info( "checking database" )
+        reload_database( self.args )
+    
+    def on_modified( self, event ):
+        log.debug( "got event for {}".format( event.src_path ) )
+        if pathlib.Path( event.src_path ) == self.args.database:
+            log.info( "reloading database" )
+            reload_database( self.args )
+
+
+def run_update( argv = sys.argv[ 1 : ] ):
+    """Run a single database update
+    
+    Args:
+        argv (iterable):    Command-line arguments (see `arguments` submodule)
+    """
+    
+    args = anime_manager.arguments.parser.parse_args( argv )
+    configure_logging( args )
+    reload_database( argv )
+
+
+def run_daemon( argv = sys.argv[ 1 : ] ):
+    """Run an update daemon that watches for database changes
+    
+    Args:
+        argv (iterable):    Command-line arguments (see `arguments` submodule)
+    """
+    
+    args = anime_manager.arguments.parser.parse_args( argv )
+    
+    configure_logging( args )
     
     log.info( "starting" )
     
     observer = watchdog.observers.Observer()
     observer.schedule(
-        AutoManageTorrentsHandler(
-            args.database,
-            args.cache_dir,
-            args.transmission,
-            args.no_trash
-        ),
+        AutoManageTorrentsHandler( args ),
         args.database.parent.as_posix()
     )
     observer.start()
@@ -111,7 +139,3 @@ def run( argv = sys.argv[ 1 : ] ):
         observer.stop()
         observer.join()
         exit( 1 )
-
-
-if __name__ == "__main__":
-    run()
