@@ -36,7 +36,8 @@ def reload_database( args ):
     """Run a single database update
     
     Args:
-        args (iterable):    Command-line arguments (see `arguments` submodule)
+        args (argparse.Namespace):  Command-line arguments (see `arguments`
+                                    submodule)
     """
     
     args.cache_dir.mkdir( parents = True, exist_ok = True )
