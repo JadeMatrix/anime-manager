@@ -101,7 +101,7 @@ def run_update( argv = sys.argv[ 1 : ] ):
     
     args = anime_manager.arguments.parser.parse_args( argv )
     configure_logging( args )
-    reload_database( argv )
+    reload_database( args )
 
 
 def run_daemon( argv = sys.argv[ 1 : ] ):
