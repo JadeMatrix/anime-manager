@@ -3,6 +3,7 @@ import anime_manager.database
 import itertools
 import json
 import logging
+import os.path
 import pathlib
 import shutil
 import re
@@ -142,7 +143,7 @@ def trash_item( item, trash_directory ):
         trashed_path = (
             trash_directory
             / str( uuid.uuid4() )
-            / item
+            / os.path.relpath( item )
         )
         log.info( "trashing {!r} to {!r}".format(
             item,
@@ -228,6 +229,8 @@ def remove_torrents( server, torrents, trash ):
                         Trash directory (see `trash_item()`)
     """
     
+    torrents = tuple( torrents )
+    
     for hash in torrents:
         log.debug( "removing torrent {}".format( hash ) )
     
@@ -236,7 +239,7 @@ def remove_torrents( server, torrents, trash ):
             server,
             "torrent-get",
             {
-                "ids"    : ( match.group( 1 ), ),
+                "ids"    : torrents,
                 "fields" : ( "downloadDir", "name", ),
             }
         )[ "torrents" ]
@@ -249,7 +252,7 @@ def remove_torrents( server, torrents, trash ):
             server,
             "torrent-remove",
             {
-                "ids" : tuple( torrents ),
+                "ids" : torrents,
                 "delete-local-data" : False,
             }
         )

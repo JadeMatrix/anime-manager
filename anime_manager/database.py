@@ -478,7 +478,7 @@ def diff( old, new ):
     
     for hash in old_hashes - new_hashes:
         actions[ "torrents" ][ "remove" ].append( hash )
-        for dest in new[ hash ][ "files" ].items():
+        for dest in old[ hash ][ "files" ].keys():
             actions[ "links" ][ "remove" ].append( dest )
     
     for hash in new_hashes & old_hashes:
