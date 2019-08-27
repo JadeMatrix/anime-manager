@@ -1,0 +1,27 @@
+#!/bin/sh
+
+. /etc/rc.subr
+
+name="anime_manager"
+rcvar="anime_manager_enable"
+pidfile="/var/run/${name}.pid"
+
+load_rc_config $name
+: ${anime_manager_enable:=NO}
+: ${anime_manager_user:=transmission}
+: ${anime_manager_venv:=/usr/local/etc/anime-manager/venv}
+: ${anime_manager_daemon:=${anime_manager_venv}/bin/anime-manager-daemon}
+
+anime_manager_user_inner="${anime_manager_user}"
+unset anime_manager_user
+
+# TODO: Support these?
+# : ${anime_manager_database:=/usr/local/etc/anime-manager/anime.yaml}
+# : ${anime_manager_cache:=/usr/local/etc/anime-manager/cache}
+# : ${anime_manager_log:=/usr/local/etc/anime-manager/log}
+# : ${anime_manager_loglevel:=WARNING}
+
+command="/usr/sbin/daemon"
+anime_manager_flags="-o /usr/local/etc/anime-manager/cache/anime-manager-rc-log -P ${pidfile} -u ${anime_manager_user_inner} -r ${anime_manager_daemon} ${anime_manager_flags}"
+
+run_rc_command "$1"
