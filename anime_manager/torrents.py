@@ -166,6 +166,33 @@ def ensure_not_exists( item, trash ):
         trash_item( link, trash )
 
 
+def cleanup_empty_dirs( directories ):
+    """Recursively remove empty subdirectories in managed directories
+    
+    Args:
+        directories (dict): The "directories" entry from a full database
+    """
+    
+    def cleanup( path ):
+        if path.is_dir():
+            children = False
+            for child in path.iterdir():
+                children = not cleanup( child ) or children
+            if not children:
+                log.debug( "removing empty managed directory {!r}".format(
+                    path.as_posix()
+                ) )
+                path.rmdir()
+                return True
+            else:
+                return False
+    
+    for name, path in directories.items():
+        if name == "media":
+            continue
+        cleanup( path )
+
+
 def remove_links( server, links, trash ):
     """Execute a set of remove-symlink actions
     

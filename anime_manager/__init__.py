@@ -58,10 +58,7 @@ def reload_database( args ):
         new_db = anime_manager.database.normalize(
             yaml.full_load( db_file )
         )
-        trash_directory = (
-            None if args.no_trash
-            else new_db[ "directories" ][ "trash" ]
-        )
+        directories = new_db[ "directories" ]
         new_flatdb = anime_manager.database.flatten( new_db )
         del new_db
     
@@ -69,8 +66,9 @@ def reload_database( args ):
     anime_manager.torrents.execute_actions(
         args.transmission,
         anime_manager.database.diff( old_flatdb, new_flatdb ),
-        trash_directory
+        None if args.no_trash else directories[ "trash" ]
     )
+    anime_manager.torrents.cleanup_empty_dirs( directories )
     
     # Save new database as cache
     with open( cache_db, "w" ) as new_db_file:
