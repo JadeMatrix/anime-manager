@@ -131,10 +131,7 @@ def trash_item( item, trash_directory ):
     """
     
     if trash_directory is None:
-        log.info( "deleting {!r}".format(
-            item,
-            trashed_path
-        ) )
+        log.info( "deleting {!r}".format( item.as_posix() ) )
         if item.is_dir():
             shutil.rmtree( item )
         else:
@@ -146,8 +143,8 @@ def trash_item( item, trash_directory ):
             / os.path.relpath( item )
         )
         log.info( "trashing {!r} to {!r}".format(
-            item,
-            trashed_path
+            item.as_posix(),
+            trashed_path.as_posix()
         ) )
         trashed_path.parent.mkdir( parents = True )
         item.rename( trashed_path )
