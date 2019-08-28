@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# PROVIDE: anime-manager
+# REQUIRE: transmission
+
 . /etc/rc.subr
 
 name="anime_manager"
