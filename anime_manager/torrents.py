@@ -125,7 +125,7 @@ def trash_item( item, trash_directory ):
     
     Args:
         item (pathlib.Path):    Item (file, directory) to trash
-        trash_directory (pathlib.Path|None)
+        trash_directory (pathlib.Path|None):
                                 Trash directory; if None, item is removed
                                 instead
     """
