@@ -101,6 +101,8 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
             reload_database( self.args )
         except anime_manager.database.InvalidDatabaseError as e:
             log.exception( "invalid database, please correct and re-save" )
+        except:
+            log.exception( "an error occurred while reloading database" )
 
 
 def run_update( argv = sys.argv[ 1 : ] ):
