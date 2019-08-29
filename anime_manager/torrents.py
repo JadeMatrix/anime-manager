@@ -161,9 +161,9 @@ def ensure_not_exists( item, trash ):
     """
     if item.exists():
         log.warning( "{!r} exists but should not, trashing".format(
-            link.as_posix()
+            item.as_posix()
         ) )
-        trash_item( link, trash )
+        trash_item( item, trash )
 
 
 def cleanup_empty_dirs( directories ):
