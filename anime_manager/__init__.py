@@ -82,13 +82,25 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
         watchdog.events.FileSystemEventHandler.__init__( self )
         self.args = args
         log.info( "checking database" )
-        reload_database( self.args )
+        self.reload()
     
     def on_modified( self, event ):
-        log.debug( "got event for {}".format( event.src_path ) )
-        if pathlib.Path( event.src_path ) == self.args.database:
+        if (
+            pathlib.Path( event.src_path ) == self.args.database
+            and event.event_type in (
+                watchdog.events.EVENT_TYPE_CREATED,
+                watchdog.events.EVENT_TYPE_MODIFIED,
+            )
+        ):
+            log.debug( "got event for {}".format( event.src_path ) )
             log.info( "reloading database" )
+            self.reload()
+    
+    def reload( self ):
+        try:
             reload_database( self.args )
+        except anime_manager.database.InvalidDatabaseError as e:
+            log.exception( "invalid database, please correct and re-save" )
 
 
 def run_update( argv = sys.argv[ 1 : ] ):
