@@ -34,6 +34,37 @@ class RPCError( Exception ):
         )
 
 
+def filter_paths_for_json( val ):
+    """Recursively scan a structure for `pathlib.Paths`s and stringify them
+    
+    Calls `pathlib.Path.as_posix()` on each appropriate object.
+    
+    Args:
+        val (any):  The structure to filter
+    
+    Returns:
+        A copy of the same structure with `pathlib.Paths`s replaced by `str`s
+    """
+    
+    try:
+        return val.as_posix()
+    except AttributeError:
+        if (
+               issubclass( type( val ), list )
+            or issubclass( type( val ), tuple )
+        ):
+            return type( val )( filter_paths_for_json( v ) for v in val )
+        elif issubclass( type( val ), set ):
+            return list( filter_paths_for_json( v ) for v in val )
+        elif issubclass( type( val ), dict ):
+            return type( val )( (
+                filter_paths_for_json( k ),
+                filter_paths_for_json( v )
+            ) for k, v in val.items() )
+        else:
+            return val
+
+
 def rpc( server, method, arguments ):
     """Perform a Transmission RPC
     
@@ -56,7 +87,10 @@ def rpc( server, method, arguments ):
     if session is None:
         session = requests.Session()
     
-    message = { "method" : method, "arguments" : arguments, }
+    message = {
+        "method"    : method,
+        "arguments" : filter_paths_for_json( arguments ),
+    }
     
     log.debug( "performing RPC to {}: {}".format(
         server,
