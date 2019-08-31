@@ -266,8 +266,8 @@ def add_links( server, links, trash ):
         source = replace_placeholder_filename( server, link[ "source" ] )
         
         log.debug( "adding link {!r} -> {!r}".format(
-            source.as_posix(),
-            link[ "dest" ].as_posix()
+            link[ "dest" ].as_posix(),
+            source.as_posix()
         ) )
         
         ensure_not_exists( link[ "dest" ], trash )
