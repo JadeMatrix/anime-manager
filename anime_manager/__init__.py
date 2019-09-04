@@ -28,7 +28,8 @@ def configure_logging( args ):
             args.log_file if args.log_file is not None
             else args.cache_dir / "log"
         ),
-        level = getattr( logging, args.log_level )
+        level  = getattr( logging, args.log_level ),
+        format = "[%(levelname)s][%(name)s][%(asctime)s] %(message)s"
     )
 
 
