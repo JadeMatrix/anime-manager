@@ -410,6 +410,22 @@ def flatten( db ):
     return flatdb
 
 
+def normalize_flatdb( flatdb ):
+    """Normalize a flat database to the current spec
+    
+    Important for manager version upgrades; essentially a no-op if the format
+    has not changed.
+    
+    Args:
+        flatdb (dict):  A flat database
+    
+    Returns:
+        dict:   The flat database normalized to the current spec
+    """
+    
+    return flatdb
+
+
 def diff( old, new ):
     """Diff two flat databases by generating a set of actions to perform
     

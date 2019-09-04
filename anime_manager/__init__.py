@@ -48,7 +48,9 @@ def reload_database( args ):
     # Load cached flat database
     try:
         with open( cache_db, encoding = "utf8" ) as old_db_file:
-            old_flatdb = yaml.full_load( old_db_file )
+            old_flatdb = anime_manager.database.normalize_flatdb(
+                yaml.full_load( old_db_file )
+            )
             log.info( "loaded flat database cache" )
     except IOError:
         old_flatdb = anime_manager.database.empty_flatdb()
