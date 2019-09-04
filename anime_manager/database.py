@@ -260,6 +260,9 @@ def normalize( db ):
                 )
             )
         
+        if "archived" not in torrent_config:
+            torrent_config[ "archived" ] = False
+        
         if "episodes" not in torrent_config:
             raise InvalidDatabaseError(
                 "torrent ID {!r} missing required key 'episodes'".format(
@@ -390,7 +393,8 @@ def flatten( db ):
                 db[ "directories" ][ "torrents" ]
                 / year_quarter_for_torrent( db, hash )
             ),
-            "files"    : {}
+            "files"    : {},
+            "archived" : torrent[ "archived" ],
         }
         for episode in torrent[ "episodes" ]:
             if "file" in episode:
@@ -423,7 +427,14 @@ def normalize_flatdb( flatdb ):
         dict:   The flat database normalized to the current spec
     """
     
-    return flatdb
+    normalized = empty_flatdb()
+    
+    for hash, torrent in flatdb.items():
+        normalized[ hash ] = dict( torrent )
+        if "archived" not in normalized[ hash ]:
+            normalized[ hash ][ "archived" ] = False
+    
+    return normalized
 
 
 def diff( old, new ):
@@ -457,6 +468,10 @@ def diff( old, new ):
                         { "source" : str, "location" : pathlib.Path, },
                         ...
                     ],
+                    "status" : [
+                        { "hash" : str, "started" : bool },
+                        ...
+                    ],
                 },
             }
     """
@@ -474,6 +489,7 @@ def diff( old, new ):
             "source" : [],
             "move"   : [],
             "add"    : [],
+            "status" : [],
         },
     }
     
@@ -538,6 +554,21 @@ def diff( old, new ):
                     ),
                     link
                 ) )
+    
+    for hash in new_hashes:
+        new_archived = new[ hash ][ "archived" ]
+        if hash in old:
+            if new_archived != old[ hash ][ "archived" ]:
+                actions[ "torrents" ][ "status" ].append( {
+                    "hash"    : hash,
+                    "started" : not new_archived,
+                } )
+        elif new_archived:
+            # Default status is started, so only stop new archived torrents
+            actions[ "torrents" ][ "status" ].append( {
+                "hash"    : hash,
+                "started" : False,
+            } )
     
     return actions
 

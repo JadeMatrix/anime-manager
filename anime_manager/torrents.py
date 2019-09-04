@@ -390,6 +390,64 @@ def move_torrents( server, torrents, trash, dry_run = False ):
             )
 
 
+def status_torrents( server, torrents, trash, dry_run = False ):
+    """Execute a set of status-torrent actions
+    
+    Args:
+        server (str):   Address (+ port) of the Transmission server
+        torrents (iterable):
+                        Set of status-torrent actions, each in the form:
+                            {
+                                "hash"    : str,
+                                "started" : bool,
+                            }
+        trash (pathlib.Path|None):
+                        Trash directory (see `trash_item()`)
+        dry_run (bool): Whether to skip actually executing actions
+    """
+    
+    torrents = tuple( torrents )
+    to_stop  = set()
+    to_start = set()
+    
+    for torrent in torrents:
+        start = torrent[ "started" ]
+        
+        ( print if dry_run else log.debug )(
+            "setting torrent {} to {}".format(
+                torrent[ "hash" ],
+                "started" if start else "stopped"
+            )
+        )
+        
+        # Sorry about this
+        add_to, other = (
+            ( to_start, to_stop ) if start
+            else ( to_stop, to_start ) 
+        )
+        if torrent[ "hash" ] in other:
+            log.warning( "previous request to {} torrent {}, {}".format(
+                "stop" if start else "start",
+                hash,
+                "starting" if start else "stopping"
+            ) )
+            other.remove( torrent[ "hash" ] )
+        add_to.add( torrent[ "hash" ] )
+    
+    if not dry_run and to_stop:
+        rpc(
+            server,
+            "torrent-stop",
+            { "ids" : to_stop, }
+        )
+    if not dry_run and to_start:
+        rpc(
+            server,
+            "torrent-start",
+            { "ids" : to_start, }
+        )
+
+
 def add_torrents( server, torrents, trash, dry_run = False ):
     """Execute a set of add-torrent actions
     
@@ -449,6 +507,7 @@ def execute_actions( server, actions, trash, dry_run = False ):
         ( "torrents", "add"    ),
         ( "torrents", "source" ),
         ( "torrents", "move"   ),
+        ( "torrents", "status" ),
         ( "links"   , "add"    ),
     ):
         globals()[ "{}_{}".format( directive, group ) ](
