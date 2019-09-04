@@ -63,6 +63,13 @@ parser.add_argument(
     required = False
 )
 parser.add_argument(
+    "-n",
+    "--dry-run",
+    action   = "store_true",
+    help     = "print changes that would be made and exit",
+    required = False
+)
+parser.add_argument(
     "--no-trash",
     action   = "store_true",
     help     = "when removing files/directories, delete rather than trash them",

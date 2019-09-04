@@ -66,23 +66,27 @@ def reload_database( args ):
     anime_manager.torrents.execute_actions(
         args.transmission,
         anime_manager.database.diff( old_flatdb, new_flatdb ),
-        None if args.no_trash else directories[ "trash" ]
+        None if args.no_trash else directories[ "trash" ],
+        args.dry_run
     )
-    anime_manager.torrents.cleanup_empty_dirs( directories )
+    anime_manager.torrents.cleanup_empty_dirs( directories, args.dry_run )
     
     # Save new database as cache
-    with open( cache_db, "w" ) as new_db_file:
-        yaml.dump( new_flatdb, new_db_file )
-        log.info( "saved new flat database cache" )
+    if not args.dry_run:
+        with open( cache_db, "w" ) as new_db_file:
+            yaml.dump( new_flatdb, new_db_file )
+            log.info( "saved new flat database cache" )
 
 
 class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
     
     def __init__( self, args ):
-        watchdog.events.FileSystemEventHandler.__init__( self )
         self.args = args
         log.info( "checking database" )
         self.reload()
+        if self.args.dry_run:
+            exit( 0 )
+        watchdog.events.FileSystemEventHandler.__init__( self )
     
     def on_modified( self, event ):
         if (

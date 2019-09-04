@@ -200,11 +200,12 @@ def ensure_not_exists( item, trash ):
         trash_item( item, trash )
 
 
-def cleanup_empty_dirs( directories ):
+def cleanup_empty_dirs( directories, dry_run = False ):
     """Recursively remove empty subdirectories in managed directories
     
     Args:
         directories (dict): The "directories" entry from a full database
+        dry_run (bool):     Whether to skip actually removing directories
     """
     
     def cleanup( path ):
@@ -213,10 +214,13 @@ def cleanup_empty_dirs( directories ):
             for child in path.iterdir():
                 children = not cleanup( child ) or children
             if not children:
-                log.debug( "removing empty managed directory {!r}".format(
-                    path.as_posix()
-                ) )
-                path.rmdir()
+                ( print if dry_run else log.debug )(
+                    "removing empty managed directory {!r}".format(
+                        path.as_posix()
+                    )
+                )
+                if not dry_run:
+                    path.rmdir()
                 return True
             else:
                 return False
@@ -227,7 +231,7 @@ def cleanup_empty_dirs( directories ):
         cleanup( path )
 
 
-def remove_links( server, links, trash ):
+def remove_links( server, links, trash, dry_run = False ):
     """Execute a set of remove-symlink actions
     
     Args:
@@ -236,17 +240,21 @@ def remove_links( server, links, trash ):
                         Set of remove-symlink actions (paths to remove)
         trash (pathlib.Path|None):
                         Trash directory (see `trash_item()`)
+        dry_run (bool): Whether to skip actually executing actions
     """
     
     for link in links:
-        log.debug( "removing link {!r}".format( link.as_posix() ) )
-        if link.is_symlink():
-            link.unlink()
-        else:
-            ensure_not_exists( link, trash )
+        ( print if dry_run else log.debug )(
+            "removing link {!r}".format( link.as_posix() )
+        )
+        if not dry_run:
+            if link.is_symlink():
+                link.unlink()
+            else:
+                ensure_not_exists( link, trash )
 
 
-def add_links( server, links, trash ):
+def add_links( server, links, trash, dry_run = False ):
     """Execute a set of add-symlink actions
     
     Args:
@@ -260,23 +268,27 @@ def add_links( server, links, trash ):
                         where "dest" will point to "source"
         trash (pathlib.Path|None):
                         Trash directory (see `trash_item()`)
+        dry_run (bool): Whether to skip actually executing actions
     """
     
     for link in links:
-        source = replace_placeholder_filename( server, link[ "source" ] )
+        source = (
+            link[ "source" ] if dry_run
+            else replace_placeholder_filename( server, link[ "source" ] )
+        )
         
-        log.debug( "adding link {!r} -> {!r}".format(
+        ( print if dry_run else log.debug )( "adding link {!r} -> {!r}".format(
             link[ "dest" ].as_posix(),
             source.as_posix()
         ) )
         
-        ensure_not_exists( link[ "dest" ], trash )
-        
-        link[ "dest" ].parent.mkdir( parents = True, exist_ok = True )
-        link[ "dest" ].symlink_to( source )
+        if not dry_run:
+            ensure_not_exists( link[ "dest" ], trash )
+            link[ "dest" ].parent.mkdir( parents = True, exist_ok = True )
+            link[ "dest" ].symlink_to( source )
 
 
-def remove_torrents( server, torrents, trash ):
+def remove_torrents( server, torrents, trash, dry_run = False ):
     """Execute a set of remove-torrent actions
     
     Args:
@@ -285,14 +297,17 @@ def remove_torrents( server, torrents, trash ):
                         Set of remove-torrent actions (torrent hashes)
         trash (pathlib.Path|None):
                         Trash directory (see `trash_item()`)
+        dry_run (bool): Whether to skip actually executing actions
     """
     
     torrents = tuple( torrents )
     
     for hash in torrents:
-        log.debug( "removing torrent {}".format( hash ) )
+        ( print if dry_run else log.debug )(
+            "removing torrent {}".format( hash )
+        )
     
-    if torrents:
+    if not dry_run and torrents:
         locations = rpc(
             server,
             "torrent-get",
@@ -316,7 +331,7 @@ def remove_torrents( server, torrents, trash ):
         )
 
 
-def resource_torrents( server, torrents, trash ):
+def source_torrents( server, torrents, trash, dry_run = False ):
     """Execute a set of re-source-torrent actions
     
     Args:
@@ -329,15 +344,19 @@ def resource_torrents( server, torrents, trash ):
                             }
         trash (pathlib.Path|None):
                         Trash directory (see `trash_item()`)
+        dry_run (bool): Whether to skip actually executing actions
     """
     for torrent in torrents:
-        log.debug( "adding sources for torrent {!r} from {}".format(
-            torrent[ "hash" ],
-            tuple( torrent[ "sources" ] )
-        ) )
+        ( print if dry_run else log.debug )(
+            "adding sources for torrent {!r} from {}".format(
+                torrent[ "hash" ],
+                tuple( torrent[ "sources" ] )
+            )
+        )
+        log.warning( "{}.source_torrents() not implemented".format( __name__ ) )
 
 
-def move_torrents( server, torrents, trash ):
+def move_torrents( server, torrents, trash, dry_run = False ):
     """Execute a set of move-torrent actions
     
     Args:
@@ -350,26 +369,28 @@ def move_torrents( server, torrents, trash ):
                             }
         trash (pathlib.Path|None):
                         Trash directory (see `trash_item()`)
+        dry_run (bool): Whether to skip actually executing actions
     """
     
     for torrent in torrents:
-        log.debug( "moving torrent {} to {!r}".format(
+        ( print if dry_run else log.debug )( "moving torrent {} to {!r}".format(
             torrent[ "hash" ],
             torrent[ "location" ].as_posix()
         ) )
         
-        rpc(
-            server,
-            "torrent-set-location",
-            {
-                "ids"      : ( torrent, ),
-                "location" : torrent[ "location" ].as_posix(),
-                "move"     : True,
-            }
-        )
+        if not dry_run:
+            rpc(
+                server,
+                "torrent-set-location",
+                {
+                    "ids"      : ( torrent, ),
+                    "location" : torrent[ "location" ].as_posix(),
+                    "move"     : True,
+                }
+            )
 
 
-def add_torrents( server, torrents, trash ):
+def add_torrents( server, torrents, trash, dry_run = False ):
     """Execute a set of add-torrent actions
     
     Args:
@@ -382,6 +403,7 @@ def add_torrents( server, torrents, trash ):
                             }
         trash (pathlib.Path|None):
                         Trash directory (see `trash_item()`)
+        dry_run (bool): Whether to skip actually executing actions
     """
     
     for torrent in torrents:
@@ -393,22 +415,25 @@ def add_torrents( server, torrents, trash ):
                 )
             )
         
-        log.debug( "adding torrent to {!r} from {}".format(
-            torrent[ "location" ].as_posix(),
-            sources
-        ) )
-        
-        rpc(
-            server,
-            "torrent-add",
-            {
-                "filename"     : sources[ 0 ],
-                "download-dir" : torrent[ "location" ].as_posix(),
-            }
+        ( print if dry_run else log.debug )(
+            "adding torrent to {!r} from {}".format(
+                torrent[ "location" ].as_posix(),
+                sources
+            )
         )
+        
+        if not dry_run:
+            rpc(
+                server,
+                "torrent-add",
+                {
+                    "filename"     : sources[ 0 ],
+                    "download-dir" : torrent[ "location" ].as_posix(),
+                }
+            )
 
 
-def execute_actions( server, actions, trash ):
+def execute_actions( server, actions, trash, dry_run = False ):
     """Execute a set of actions as output by `database.diff()`
     
     Args:
@@ -416,10 +441,19 @@ def execute_actions( server, actions, trash ):
         actions (dict): The set of actions
         trash (pathlib.Path|None):
                         Trash directory (see `trash_item()`)
+        dry_run (bool): Whether to skip actually executing actions
     """
-    remove_links     ( server, actions[ "links"    ][ "remove" ], trash )
-    remove_torrents  ( server, actions[ "torrents" ][ "remove" ], trash )
-    add_torrents     ( server, actions[ "torrents" ][ "add"    ], trash )
-    resource_torrents( server, actions[ "torrents" ][ "source" ], trash )
-    move_torrents    ( server, actions[ "torrents" ][ "move"   ], trash )
-    add_links        ( server, actions[ "links"    ][ "add"    ], trash )
+    for group, directive in (
+        ( "links"   , "remove" ),
+        ( "torrents", "remove" ),
+        ( "torrents", "add"    ),
+        ( "torrents", "source" ),
+        ( "torrents", "move"   ),
+        ( "links"   , "add"    ),
+    ):
+        globals()[ "{}_{}".format( directive, group ) ](
+            server,
+            actions[ group ][ directive ],
+            trash,
+            dry_run
+        )
