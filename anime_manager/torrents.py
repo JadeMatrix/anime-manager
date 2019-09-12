@@ -383,7 +383,7 @@ def move_torrents( server, torrents, trash, dry_run = False ):
                 server,
                 "torrent-set-location",
                 {
-                    "ids"      : ( torrent, ),
+                    "ids"      : ( torrent[ "hash" ], ),
                     "location" : torrent[ "location" ].as_posix(),
                     "move"     : True,
                 }
