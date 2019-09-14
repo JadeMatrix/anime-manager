@@ -99,17 +99,24 @@ def show_link_for_episode( db, episode ):
         else:
             link = link / "{}.{}".format( season_title, extension )
     else:
+        try:
+            episode_string = "{:02}".format( episode[ "episode" ] )
+            if multiseason and not has_season_title:
+                episode_string = "e" + episode_string
+        except ValueError:
+            episode_string = " {}".format( episode[ "episode" ] )
+        
         if multiseason and not has_season_title:
-            link = link / "{} - s{}e{:02}.{}".format(
+            link = link / "{} - s{}{}.{}".format(
                 show[ "title" ],
                 episode[ "season"  ],
-                episode[ "episode" ],
+                episode_string,
                 extension
             )
         else:
-            link = link / "{} - {:02}.{}".format(
+            link = link / "{} - {}.{}".format(
                 season_title,
-                episode[ "episode" ],
+                episode_string.strip(),
                 extension
             )
     
@@ -277,22 +284,18 @@ def normalize( db ):
             )
         
         for episode in torrent_config[ "episodes" ]:
-            episode_num = 1
-            season_num  = 1
-            if "episode" in episode:
-                try:
-                    episode_num = int( episode[ "episode" ] )
-                except ValueError as e:
-                    raise InvalidDatabaseError( (
-                        "invalid episode number for torrent ID {!r}: {!r}"
-                    ).format( torrent_hash, e ) )
+            if "episode" not in episode:
+                episode[ "episode" ] = 1
+            
             if "season" in episode:
                 try:
-                    season_num = int( episode[ "season" ] )
+                    episode[ "season" ] = int( episode[ "season" ] )
                 except ValueError as e:
                     raise InvalidDatabaseError( (
                         "invalid season number for torrent ID {!r}: {!r}"
                     ).format( torrent_hash, e ) )
+            else:
+                episode[ "season" ] = 1
             
             for field in (
                 "title",
@@ -343,9 +346,6 @@ def normalize( db ):
                             "invalid episode count for season for show for "
                             "torrent ID {!r}: {!r}"
                         ).format( torrent_hash, e ) )
-            
-            episode[ "episode" ] = episode_num
-            episode[ "season"  ] = season_num
         
         # episodes = []
         # if "episodes" in torrent_config:
