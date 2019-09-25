@@ -65,13 +65,13 @@ def show_link_for_episode( db, episode ):
     
     Returns:
         pathlib.Path:   The filename and path to which to symlink the episode
-                        (relative to the appropriate status directory)
+                        (relative to the appropriate status directory), without
+                        an extension
     """
     
     show = episode[ "show" ]
     multiseason = len( show[ "seasons" ] ) > 1
     season = show[ "seasons" ][ episode[ "season" ] - 1 ]
-    extension = "mkv"
     has_season_title = "title" in season
     season_title = season[ "title" ] if has_season_title else show[ "title" ]
     
@@ -91,13 +91,12 @@ def show_link_for_episode( db, episode ):
     
     if "episodes" in season and season[ "episodes" ] == 1:
         if multiseason and not has_season_title:
-            link = link / "{} - s{}.{}".format(
+            link = link / "{} - s{}".format(
                 show[ "title" ],
-                episode[ "season" ],
-                extension
+                episode[ "season" ]
             )
         else:
-            link = link / "{}.{}".format( season_title, extension )
+            link = link / str( season_title )
     else:
         try:
             try:
@@ -118,17 +117,15 @@ def show_link_for_episode( db, episode ):
             episode_string = " {}".format( episode[ "episode" ] )
         
         if multiseason and not has_season_title:
-            link = link / "{} - s{}{}.{}".format(
+            link = link / "{} - s{}{}".format(
                 show[ "title" ],
                 episode[ "season" ],
-                episode_string,
-                extension
+                episode_string
             )
         else:
-            link = link / "{} - {}.{}".format(
+            link = link / "{} - {}".format(
                 season_title,
-                episode_string.strip(),
-                extension
+                episode_string.strip()
             )
     
     return link

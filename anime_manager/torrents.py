@@ -265,7 +265,8 @@ def add_links( server, links, trash, dry_run = False ):
                                 "source" : pathlib.Path,
                                 "dest"   : pathlib.Path,
                             }
-                        where "dest" will point to "source"
+                        where "dest" will point to "source" using the extension
+                        of "source"
         trash (pathlib.Path|None):
                         Trash directory (see `trash_item()`)
         dry_run (bool): Whether to skip actually executing actions
@@ -276,16 +277,17 @@ def add_links( server, links, trash, dry_run = False ):
             link[ "source" ] if dry_run
             else replace_placeholder_filename( server, link[ "source" ] )
         )
+        dest = link[ "dest" ].with_suffix( source.suffix )
         
         ( print if dry_run else log.debug )( "adding link {!r} -> {!r}".format(
-            link[ "dest" ].as_posix(),
+            dest.as_posix(),
             source.as_posix()
         ) )
         
         if not dry_run:
-            ensure_not_exists( link[ "dest" ], trash )
-            link[ "dest" ].parent.mkdir( parents = True, exist_ok = True )
-            link[ "dest" ].symlink_to( source )
+            ensure_not_exists( dest, trash )
+            dest.parent.mkdir( parents = True, exist_ok = True )
+            dest.symlink_to( source )
 
 
 def remove_torrents( server, torrents, trash, dry_run = False ):
