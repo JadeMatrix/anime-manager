@@ -67,7 +67,7 @@ def reload_database( args ):
     
     # Make changes
     anime_manager.torrents.execute_actions(
-        args.transmission,
+        torrents.TransmissionServer( args.transmission ),
         anime_manager.database.diff( old_flatdb, new_flatdb ),
         None if args.no_trash else directories[ "trash" ],
         args.dry_run

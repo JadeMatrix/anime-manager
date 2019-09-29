@@ -21,7 +21,6 @@ placeholder_pattern = re.compile( "".join(
         itertools.count()
     )
 ).format( "(" + anime_manager.database.hash_regex + ")" ) )
-session = None
 sid_header = "X-Transmission-Session-Id"
 
 
@@ -65,59 +64,71 @@ def filter_paths_for_json( val ):
             return val
 
 
-def rpc( server, method, arguments ):
-    """Perform a Transmission RPC
-    
-    Args:
-        server (str):       Address (+ port) of the Transmission server
-        method (str):       Transmission RPC method name
-        arguments (str):    Arguments to pass in the RPC
-    
-    Returns:
-        The contents of the "arguments" field in the response, parsed from JSON
-    
-    Raises:
-        RPCError:   An error occurred regarding the contents of the payload
-        requests.exceptions.RequestException:
-                    An error occurred sending the request or receiving the
-                    response
+class TransmissionServer( object ):
+    """
     """
     
-    global session
-    if session is None:
-        session = requests.Session()
+    def __init__( self, location ):
+        self.location = location
+        self.session  = requests.Session()
+        self.log      = logging.getLogger( "{}.{}".format(
+            self.__class__.__module__,
+            self.__class__.__name__
+        ) )
     
-    message = {
-        "method"    : method,
-        "arguments" : filter_paths_for_json( arguments ),
-    }
-    
-    log.debug( "performing RPC to {}: {}".format(
-        server,
-        json.dumps( message, indent = 2 )
-    ) )
-    
-    def do_rpc( url, data, retry = False ):
-        response = session.post( url, data = json.dumps( data ) )
-        if response.status_code == 409:
-            if retry:
-                response.raise_for_status()
-            else:
-                session.headers.update( {
-                    sid_header : response.headers[ sid_header ]
-                } )
-                return do_rpc( url, data, True )
-        return response.json()
-    
-    response_content = do_rpc(
-        "http://{}/transmission/rpc".format( server ),
-        message
-    )
-    
-    if response_content[ "result" ] != "success":
-        raise RPCError( server, response_content[ "result" ], message )
-    
-    return response_content[ "arguments" ]
+    def rpc( self, method, arguments ):
+        """Perform a Transmission RPC
+        
+        Args:
+            method (str):       Transmission RPC method name
+            arguments (str):    Arguments to pass in the RPC
+        
+        Returns:
+            The contents of the "arguments" field in the response, parsed from
+            JSON
+        
+        Raises:
+            RPCError:   An error occurred regarding the contents of the payload
+            requests.exceptions.RequestException:
+                        An error occurred sending the request or receiving the
+                        response
+        """
+        
+        message = {
+            "method"    : method,
+            "arguments" : filter_paths_for_json( arguments ),
+        }
+        
+        self.log.debug( "performing RPC to {}: {}".format(
+            self.location,
+            json.dumps( message, indent = 2 )
+        ) )
+        
+        def do_rpc( url, data, retry = False ):
+            response = self.session.post( url, data = json.dumps( data ) )
+            if response.status_code == 409:
+                if retry:
+                    response.raise_for_status()
+                else:
+                    self.session.headers.update( {
+                        sid_header : response.headers[ sid_header ]
+                    } )
+                    return do_rpc( url, data, True )
+            return response.json()
+        
+        response_content = do_rpc(
+            "http://{}/transmission/rpc".format( self.location ),
+            message
+        )
+        
+        if response_content[ "result" ] != "success":
+            raise RPCError(
+                self.location,
+                response_content[ "result" ],
+                message
+            )
+        
+        return response_content[ "arguments" ]
 
 
 def replace_placeholder_filename( server, path ):
@@ -126,7 +137,8 @@ def replace_placeholder_filename( server, path ):
     See `database.placeholder_filename()`
     
     Args:
-        server (str):           Address (+ port) of the Transmission server
+        server (TransmissionServer):
+                                The Transmission server to use
         path (pathlib.Path):    Path potentially containing a torrent download
                                 name placeholder
     
@@ -138,8 +150,7 @@ def replace_placeholder_filename( server, path ):
     for part in path.parts:
         match = placeholder_pattern.match( part )
         if match:
-            new_path.append( rpc(
-                server,
+            new_path.append( server.rpc(
                 "torrent-get",
                 {
                     "ids"    : ( match.group( 1 ), ),
@@ -235,7 +246,8 @@ def remove_links( server, links, trash, dry_run = False ):
     """Execute a set of remove-symlink actions
     
     Args:
-        server (str):   Address (+ port) of the Transmission server
+        server (TransmissionServer):
+                        The Transmission server to use
         links (iterable[pathlib.Path]):
                         Set of remove-symlink actions (paths to remove)
         trash (pathlib.Path|None):
@@ -258,7 +270,8 @@ def add_links( server, links, trash, dry_run = False ):
     """Execute a set of add-symlink actions
     
     Args:
-        server (str):   Address (+ port) of the Transmission server
+        server (TransmissionServer):
+                        The Transmission server to use
         links (iterable):
                         Set of add-symlink actions, each in the form:
                             {
@@ -298,7 +311,8 @@ def remove_torrents( server, torrents, trash, dry_run = False ):
     """Execute a set of remove-torrent actions
     
     Args:
-        server (str):   Address (+ port) of the Transmission server
+        server (TransmissionServer):
+                        The Transmission server to use
         torrents (iterable[str]):
                         Set of remove-torrent actions (torrent hashes)
         trash (pathlib.Path|None):
@@ -314,8 +328,7 @@ def remove_torrents( server, torrents, trash, dry_run = False ):
         )
     
     if not dry_run and torrents:
-        locations = rpc(
-            server,
+        locations = server.rpc(
             "torrent-get",
             {
                 "ids"    : torrents,
@@ -327,8 +340,7 @@ def remove_torrents( server, torrents, trash, dry_run = False ):
                 pathlib.Path( location[ "downloadDir" ] ) / location[ "name" ],
                 trash
             )
-        rpc(
-            server,
+        server.rpc(
             "torrent-remove",
             {
                 "ids" : torrents,
@@ -341,7 +353,8 @@ def source_torrents( server, torrents, trash, dry_run = False ):
     """Execute a set of re-source-torrent actions
     
     Args:
-        server (str):   Address (+ port) of the Transmission server
+        server (TransmissionServer):
+                        The Transmission server to use
         torrents (iterable):
                         Set of re-source-torrent actions, each in the form:
                             {
@@ -366,7 +379,8 @@ def move_torrents( server, torrents, trash, dry_run = False ):
     """Execute a set of move-torrent actions
     
     Args:
-        server (str):   Address (+ port) of the Transmission server
+        server (TransmissionServer):
+                        The Transmission server to use
         torrents (iterable):
                         Set of move-torrent actions, each in the form:
                             {
@@ -385,8 +399,7 @@ def move_torrents( server, torrents, trash, dry_run = False ):
         ) )
         
         if not dry_run:
-            rpc(
-                server,
+            server.rpc(
                 "torrent-set-location",
                 {
                     "ids"      : ( torrent[ "hash" ], ),
@@ -400,7 +413,8 @@ def status_torrents( server, torrents, trash, dry_run = False ):
     """Execute a set of status-torrent actions
     
     Args:
-        server (str):   Address (+ port) of the Transmission server
+        server (TransmissionServer):
+                        The Transmission server to use
         torrents (iterable):
                         Set of status-torrent actions, each in the form:
                             {
@@ -441,14 +455,12 @@ def status_torrents( server, torrents, trash, dry_run = False ):
         add_to.add( torrent[ "hash" ] )
     
     if not dry_run and to_stop:
-        rpc(
-            server,
+        server.rpc(
             "torrent-stop",
             { "ids" : to_stop, }
         )
     if not dry_run and to_start:
-        rpc(
-            server,
+        server.rpc(
             "torrent-start",
             { "ids" : to_start, }
         )
@@ -458,7 +470,8 @@ def add_torrents( server, torrents, trash, dry_run = False ):
     """Execute a set of add-torrent actions
     
     Args:
-        server (str):   Address (+ port) of the Transmission server
+        server (TransmissionServer):
+                        The Transmission server to use
         torrents (iterable):
                         Set of add-torrent actions, each in the form:
                             {
@@ -487,8 +500,7 @@ def add_torrents( server, torrents, trash, dry_run = False ):
         )
         
         if not dry_run:
-            rpc(
-                server,
+            server.rpc(
                 "torrent-add",
                 {
                     "filename"     : sources[ 0 ],
@@ -501,7 +513,8 @@ def execute_actions( server, actions, trash, dry_run = False ):
     """Execute a set of actions as output by `database.diff()`
     
     Args:
-        server (str):   Address (+ port) of the Transmission server
+        server (TransmissionServer):
+                        The Transmission server to use
         actions (dict): The set of actions
         trash (pathlib.Path|None):
                         Trash directory (see `trash_item()`)
