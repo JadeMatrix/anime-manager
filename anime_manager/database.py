@@ -17,6 +17,7 @@ season_quarter_map = {
 }
 hash_regex = r"[0-9a-fA-F]{40}"
 name_placeholder = "$NAME:{}$"
+extension_placeholder = "$EXTENSION$"
 
 
 class InvalidDatabaseError( Exception ):
@@ -91,12 +92,16 @@ def show_link_for_episode( db, episode ):
     
     if "episodes" in season and season[ "episodes" ] == 1:
         if multiseason and not has_season_title:
-            link = link / "{} - s{}".format(
+            link = link / "{} - s{}.{}".format(
                 show[ "title" ],
-                episode[ "season" ]
+                episode[ "season" ],
+                extension_placeholder
             )
         else:
-            link = link / str( season_title )
+            link = link / "{}.{}".format(
+                season_title,
+                extension_placeholder
+            )
     else:
         try:
             try:
@@ -117,15 +122,17 @@ def show_link_for_episode( db, episode ):
             episode_string = " {}".format( episode[ "episode" ] )
         
         if multiseason and not has_season_title:
-            link = link / "{} - s{}{}".format(
+            link = link / "{} - s{}{}.{}".format(
                 show[ "title" ],
                 episode[ "season" ],
-                episode_string
+                episode_string,
+                extension_placeholder
             )
         else:
-            link = link / "{} - {}".format(
+            link = link / "{} - {}.{}".format(
                 season_title,
-                episode_string.strip()
+                episode_string.strip(),
+                extension_placeholder
             )
     
     return link
