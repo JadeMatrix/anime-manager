@@ -129,6 +129,199 @@ class TransmissionServer( object ):
             )
         
         return response_content[ "arguments" ]
+    
+    def remove_torrents( self, torrents, trash, dry_run = False ):
+        """Execute a set of remove-torrent actions
+        
+        Args:
+            torrents (iterable[str]):
+                            Set of remove-torrent actions (torrent hashes)
+            trash (pathlib.Path|None):
+                            Trash directory (see `trash_item()`)
+            dry_run (bool): Whether to skip actually executing actions
+        """
+        
+        torrents = tuple( torrents )
+        
+        for hash in torrents:
+            ( print if dry_run else log.debug )(
+                "removing torrent {}".format( hash )
+            )
+        
+        if not dry_run and torrents:
+            locations = self.rpc(
+                "torrent-get",
+                {
+                    "ids"    : torrents,
+                    "fields" : ( "downloadDir", "name", ),
+                }
+            )[ "torrents" ]
+            for location in locations:
+                trash_item(
+                    pathlib.Path( location[ "downloadDir" ] ) / location[ "name" ],
+                    trash
+                )
+            self.rpc(
+                "torrent-remove",
+                {
+                    "ids" : torrents,
+                    "delete-local-data" : False,
+                }
+            )
+    
+    def source_torrents( self, torrents, trash, dry_run = False ):
+        """Execute a set of re-source-torrent actions
+        
+        Args:
+            torrents (iterable):
+                            Set of re-source-torrent actions, each in the form:
+                                {
+                                    "hash"    : str,
+                                    "sources" : { str, ... }
+                                }
+            trash (pathlib.Path|None):
+                            Trash directory (see `trash_item()`)
+            dry_run (bool): Whether to skip actually executing actions
+        """
+        for torrent in torrents:
+            ( print if dry_run else log.debug )(
+                "adding sources for torrent {!r} from {}".format(
+                    torrent[ "hash" ],
+                    tuple( torrent[ "sources" ] )
+                )
+            )
+            log.warning( "{}.{}.source_torrents() not implemented".format(
+                self.__class__.__module__,
+                self.__class__.__name__
+            ) )
+    
+    def move_torrents( self, torrents, trash, dry_run = False ):
+        """Execute a set of move-torrent actions
+        
+        Args:
+            torrents (iterable):
+                            Set of move-torrent actions, each in the form:
+                                {
+                                    "hash"     : str,
+                                    "location" : pathlib.Path,
+                                }
+            trash (pathlib.Path|None):
+                            Trash directory (see `trash_item()`)
+            dry_run (bool): Whether to skip actually executing actions
+        """
+        
+        for torrent in torrents:
+            (
+                print if dry_run
+                else log.debug
+            )( "moving torrent {} to {!r}".format(
+                torrent[ "hash" ],
+                torrent[ "location" ].as_posix()
+            ) )
+            
+            if not dry_run:
+                self.rpc(
+                    "torrent-set-location",
+                    {
+                        "ids"      : ( torrent[ "hash" ], ),
+                        "location" : torrent[ "location" ].as_posix(),
+                        "move"     : True,
+                    }
+                )
+    
+    def status_torrents( self, torrents, trash, dry_run = False ):
+        """Execute a set of status-torrent actions
+        
+        Args:
+            torrents (iterable):
+                            Set of status-torrent actions, each in the form:
+                                {
+                                    "hash"    : str,
+                                    "started" : bool,
+                                }
+            trash (pathlib.Path|None):
+                            Trash directory (see `trash_item()`)
+            dry_run (bool): Whether to skip actually executing actions
+        """
+        
+        torrents = tuple( torrents )
+        to_stop  = set()
+        to_start = set()
+        
+        for torrent in torrents:
+            start = torrent[ "started" ]
+            
+            ( print if dry_run else log.debug )(
+                "setting torrent {} to {}".format(
+                    torrent[ "hash" ],
+                    "started" if start else "stopped"
+                )
+            )
+            
+            # Sorry about this
+            add_to, other = (
+                ( to_start, to_stop ) if start
+                else ( to_stop, to_start ) 
+            )
+            if torrent[ "hash" ] in other:
+                log.warning( "previous request to {} torrent {}, {}".format(
+                    "stop" if start else "start",
+                    hash,
+                    "starting" if start else "stopping"
+                ) )
+                other.remove( torrent[ "hash" ] )
+            add_to.add( torrent[ "hash" ] )
+        
+        if not dry_run and to_stop:
+            self.rpc(
+                "torrent-stop",
+                { "ids" : to_stop, }
+            )
+        if not dry_run and to_start:
+            self.rpc(
+                "torrent-start",
+                { "ids" : to_start, }
+            )
+    
+    def add_torrents( self, torrents, trash, dry_run = False ):
+        """Execute a set of add-torrent actions
+        
+        Args:
+            torrents (iterable):
+                            Set of add-torrent actions, each in the form:
+                                {
+                                    "sources"  : { str, ... },
+                                    "location" : pathlib.Path,
+                                }
+            trash (pathlib.Path|None):
+                            Trash directory (see `trash_item()`)
+            dry_run (bool): Whether to skip actually executing actions
+        """
+        
+        for torrent in torrents:
+            sources = tuple( torrent[ "sources" ] )
+            if len( sources ) != 1:
+                log.warning(
+                    "Got {} sources for a torrent, expected exactly 1".format(
+                        len( source )
+                    )
+                )
+            
+            ( print if dry_run else log.debug )(
+                "adding torrent to {!r} from {}".format(
+                    torrent[ "location" ].as_posix(),
+                    sources
+                )
+            )
+            
+            if not dry_run:
+                self.rpc(
+                    "torrent-add",
+                    {
+                        "filename"     : sources[ 0 ],
+                        "download-dir" : torrent[ "location" ].as_posix(),
+                    }
+                )
 
 
 def replace_placeholder_filename( server, path ):
@@ -307,208 +500,6 @@ def add_links( server, links, trash, dry_run = False ):
             dest.symlink_to( source )
 
 
-def remove_torrents( server, torrents, trash, dry_run = False ):
-    """Execute a set of remove-torrent actions
-    
-    Args:
-        server (TransmissionServer):
-                        The Transmission server to use
-        torrents (iterable[str]):
-                        Set of remove-torrent actions (torrent hashes)
-        trash (pathlib.Path|None):
-                        Trash directory (see `trash_item()`)
-        dry_run (bool): Whether to skip actually executing actions
-    """
-    
-    torrents = tuple( torrents )
-    
-    for hash in torrents:
-        ( print if dry_run else log.debug )(
-            "removing torrent {}".format( hash )
-        )
-    
-    if not dry_run and torrents:
-        locations = server.rpc(
-            "torrent-get",
-            {
-                "ids"    : torrents,
-                "fields" : ( "downloadDir", "name", ),
-            }
-        )[ "torrents" ]
-        for location in locations:
-            trash_item(
-                pathlib.Path( location[ "downloadDir" ] ) / location[ "name" ],
-                trash
-            )
-        server.rpc(
-            "torrent-remove",
-            {
-                "ids" : torrents,
-                "delete-local-data" : False,
-            }
-        )
-
-
-def source_torrents( server, torrents, trash, dry_run = False ):
-    """Execute a set of re-source-torrent actions
-    
-    Args:
-        server (TransmissionServer):
-                        The Transmission server to use
-        torrents (iterable):
-                        Set of re-source-torrent actions, each in the form:
-                            {
-                                "hash"    : str,
-                                "sources" : { str, ... }
-                            }
-        trash (pathlib.Path|None):
-                        Trash directory (see `trash_item()`)
-        dry_run (bool): Whether to skip actually executing actions
-    """
-    for torrent in torrents:
-        ( print if dry_run else log.debug )(
-            "adding sources for torrent {!r} from {}".format(
-                torrent[ "hash" ],
-                tuple( torrent[ "sources" ] )
-            )
-        )
-        log.warning( "{}.source_torrents() not implemented".format( __name__ ) )
-
-
-def move_torrents( server, torrents, trash, dry_run = False ):
-    """Execute a set of move-torrent actions
-    
-    Args:
-        server (TransmissionServer):
-                        The Transmission server to use
-        torrents (iterable):
-                        Set of move-torrent actions, each in the form:
-                            {
-                                "hash"     : str,
-                                "location" : pathlib.Path,
-                            }
-        trash (pathlib.Path|None):
-                        Trash directory (see `trash_item()`)
-        dry_run (bool): Whether to skip actually executing actions
-    """
-    
-    for torrent in torrents:
-        ( print if dry_run else log.debug )( "moving torrent {} to {!r}".format(
-            torrent[ "hash" ],
-            torrent[ "location" ].as_posix()
-        ) )
-        
-        if not dry_run:
-            server.rpc(
-                "torrent-set-location",
-                {
-                    "ids"      : ( torrent[ "hash" ], ),
-                    "location" : torrent[ "location" ].as_posix(),
-                    "move"     : True,
-                }
-            )
-
-
-def status_torrents( server, torrents, trash, dry_run = False ):
-    """Execute a set of status-torrent actions
-    
-    Args:
-        server (TransmissionServer):
-                        The Transmission server to use
-        torrents (iterable):
-                        Set of status-torrent actions, each in the form:
-                            {
-                                "hash"    : str,
-                                "started" : bool,
-                            }
-        trash (pathlib.Path|None):
-                        Trash directory (see `trash_item()`)
-        dry_run (bool): Whether to skip actually executing actions
-    """
-    
-    torrents = tuple( torrents )
-    to_stop  = set()
-    to_start = set()
-    
-    for torrent in torrents:
-        start = torrent[ "started" ]
-        
-        ( print if dry_run else log.debug )(
-            "setting torrent {} to {}".format(
-                torrent[ "hash" ],
-                "started" if start else "stopped"
-            )
-        )
-        
-        # Sorry about this
-        add_to, other = (
-            ( to_start, to_stop ) if start
-            else ( to_stop, to_start ) 
-        )
-        if torrent[ "hash" ] in other:
-            log.warning( "previous request to {} torrent {}, {}".format(
-                "stop" if start else "start",
-                hash,
-                "starting" if start else "stopping"
-            ) )
-            other.remove( torrent[ "hash" ] )
-        add_to.add( torrent[ "hash" ] )
-    
-    if not dry_run and to_stop:
-        server.rpc(
-            "torrent-stop",
-            { "ids" : to_stop, }
-        )
-    if not dry_run and to_start:
-        server.rpc(
-            "torrent-start",
-            { "ids" : to_start, }
-        )
-
-
-def add_torrents( server, torrents, trash, dry_run = False ):
-    """Execute a set of add-torrent actions
-    
-    Args:
-        server (TransmissionServer):
-                        The Transmission server to use
-        torrents (iterable):
-                        Set of add-torrent actions, each in the form:
-                            {
-                                "sources"  : { str, ... },
-                                "location" : pathlib.Path,
-                            }
-        trash (pathlib.Path|None):
-                        Trash directory (see `trash_item()`)
-        dry_run (bool): Whether to skip actually executing actions
-    """
-    
-    for torrent in torrents:
-        sources = tuple( torrent[ "sources" ] )
-        if len( sources ) != 1:
-            log.warning(
-                "Got {} sources for a torrent, expected exactly 1".format(
-                    len( source )
-                )
-            )
-        
-        ( print if dry_run else log.debug )(
-            "adding torrent to {!r} from {}".format(
-                torrent[ "location" ].as_posix(),
-                sources
-            )
-        )
-        
-        if not dry_run:
-            server.rpc(
-                "torrent-add",
-                {
-                    "filename"     : sources[ 0 ],
-                    "download-dir" : torrent[ "location" ].as_posix(),
-                }
-            )
-
-
 def execute_actions( server, actions, trash, dry_run = False ):
     """Execute a set of actions as output by `database.diff()`
     
@@ -520,18 +511,10 @@ def execute_actions( server, actions, trash, dry_run = False ):
                         Trash directory (see `trash_item()`)
         dry_run (bool): Whether to skip actually executing actions
     """
-    for group, directive in (
-        ( "links"   , "remove" ),
-        ( "torrents", "remove" ),
-        ( "torrents", "add"    ),
-        ( "torrents", "source" ),
-        ( "torrents", "move"   ),
-        ( "torrents", "status" ),
-        ( "links"   , "add"    ),
-    ):
-        globals()[ "{}_{}".format( directive, group ) ](
-            server,
-            actions[ group ][ directive ],
-            trash,
-            dry_run
-        )
+    remove_links  ( server, actions[ "links"    ][ "remove" ], trash, dry_run )
+    server.remove_torrents( actions[ "torrents" ][ "remove" ], trash, dry_run )
+    server.   add_torrents( actions[ "torrents" ][ "add"    ], trash, dry_run )
+    server.source_torrents( actions[ "torrents" ][ "source" ], trash, dry_run )
+    server.  move_torrents( actions[ "torrents" ][ "move"   ], trash, dry_run )
+    server.status_torrents( actions[ "torrents" ][ "status" ], trash, dry_run )
+    add_links     ( server, actions[ "links"    ][ "remove" ], trash, dry_run )
