@@ -273,11 +273,15 @@ def add_links( server, links, trash, dry_run = False ):
     """
     
     for link in links:
-        source = (
-            link[ "source" ] if dry_run
-            else replace_placeholder_filename( server, link[ "source" ] )
-        )
-        dest = link[ "dest" ].with_suffix( source.suffix )
+        try:
+            source = replace_placeholder_filename( server, link[ "source" ] )
+            dest = link[ "dest" ].with_suffix( source.suffix )
+        except RPCError:
+            if dry_run:
+                source = link[ "source" ]
+                dest = link[ "dest" ]
+            else:
+                raise
         
         ( print if dry_run else log.debug )( "adding link {!r} -> {!r}".format(
             dest.as_posix(),
