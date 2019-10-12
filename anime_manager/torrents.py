@@ -327,6 +327,38 @@ class TransmissionServer( object ):
                         "download-dir" : torrent[ "location" ].as_posix(),
                     }
                 )
+    
+    def torrent_name( self, torrents ):
+        """Get the names of the specified torrents
+        
+        Args:
+            torrents (iterable): Set of torrent hashes
+        
+        Returns:
+            dict:   A map of the specified torrent hashes to their name
+        """
+        
+        torrents = list( torrents )
+        
+        names = dict( zip(
+            ( t[ "hashString" ], t[ "name" ] ) for t in self.rpc(
+                "torrent-get",
+                {
+                    "ids"    : torrents,
+                    "fields" : ( "hashString", "name", ),
+                }
+            )[ "torrents" ]
+        ) )
+        
+        failed_hashes = set( torrents ) - set( names.keys() )
+        if failed_hashes:
+            raise RPCError(
+                self.location,
+                "success", # Server itself will report success
+                "no such torrent(s): {}".format( ", ".join( failed_hashes ) )
+            )
+        else:
+            return names
 
 
 def replace_placeholder_filename( server, path ):
@@ -348,13 +380,8 @@ def replace_placeholder_filename( server, path ):
     for part in path.parts:
         match = placeholder_pattern.match( part )
         if match:
-            new_path.append( server.rpc(
-                "torrent-get",
-                {
-                    "ids"    : ( match.group( 1 ), ),
-                    "fields" : ( "name", ),
-                }
-            )[ "torrents" ][ 0 ][ "name" ] )
+            hash = match.group( 1 )
+            new_path.append( server.torrent_name( ( hash, ) )[ hash ] )
         else:
             new_path.append( part )
     
@@ -490,7 +517,7 @@ def add_links( server, links, trash, dry_run = False ):
         except RPCError:
             if dry_run:
                 source = link[ "source" ]
-                dest = link[ "dest" ]
+                dest   = link[ "dest" ]
             else:
                 raise
         
