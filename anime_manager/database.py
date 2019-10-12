@@ -586,4 +586,3 @@ def diff( old, new ):
             } )
     
     return actions
-

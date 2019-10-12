@@ -1,5 +1,6 @@
 import anime_manager.arguments
 import anime_manager.database
+import anime_manager.library
 import anime_manager.torrents
 
 import logging
@@ -66,13 +67,13 @@ def reload_database( args ):
         del new_db
     
     # Make changes
-    anime_manager.torrents.execute_actions(
-        torrents.TransmissionServer( args.transmission ),
+    anime_manager.library.execute_actions(
+        anime_manager.torrents.TransmissionServer( args.transmission ),
         anime_manager.database.diff( old_flatdb, new_flatdb ),
         None if args.no_trash else directories[ "trash" ],
         args.dry_run
     )
-    anime_manager.torrents.cleanup_empty_dirs( directories, args.dry_run )
+    anime_manager.library.cleanup_empty_dirs( directories, args.dry_run )
     
     # Save new database as cache
     if not args.dry_run:
