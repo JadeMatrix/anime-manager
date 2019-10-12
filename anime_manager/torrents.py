@@ -517,4 +517,4 @@ def execute_actions( server, actions, trash, dry_run = False ):
     server.source_torrents( actions[ "torrents" ][ "source" ], trash, dry_run )
     server.  move_torrents( actions[ "torrents" ][ "move"   ], trash, dry_run )
     server.status_torrents( actions[ "torrents" ][ "status" ], trash, dry_run )
-    add_links     ( server, actions[ "links"    ][ "remove" ], trash, dry_run )
+    add_links     ( server, actions[ "links"    ][ "add"    ], trash, dry_run )
