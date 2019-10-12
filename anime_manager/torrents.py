@@ -329,7 +329,7 @@ class TransmissionServer( object ):
         
         torrents = list( torrents )
         
-        names = dict( zip(
+        names = dict(
             ( t[ "hashString" ], t[ "name" ] ) for t in self.rpc(
                 "torrent-get",
                 {
@@ -337,7 +337,7 @@ class TransmissionServer( object ):
                     "fields" : ( "hashString", "name", ),
                 }
             )[ "torrents" ]
-        ) )
+        )
         
         failed_hashes = set( torrents ) - set( names.keys() )
         if failed_hashes:
