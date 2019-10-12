@@ -65,8 +65,7 @@ def filter_paths_for_json( val ):
 
 
 class TransmissionServer( object ):
-    """
-    """
+    """Represents a single connection to a transmission server/daemon"""
     
     def __init__( self, location ):
         self.location = location
