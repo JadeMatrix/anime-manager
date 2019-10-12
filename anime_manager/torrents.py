@@ -121,6 +121,11 @@ class TransmissionServer( object ):
             message
         )
         
+        self.log.debug( "RPC to {} got response: {}".format(
+            self.location,
+            json.dumps( response_content, indent = 2 )
+        ) )
+        
         if response_content[ "result" ] != "success":
             raise RPCError(
                 self.location,
