@@ -127,6 +127,28 @@ def show_link_for_episode( db, episode ):
     return link
 
 
+def relative_link_pair( source, dest ):
+    """Create an 'add-link' action so that the source is relative, if possible
+    
+    Args:
+        source (pathlib.Path):  The target of the symlink, as cached (fully
+                                prefixed up to the media directory)
+        dest (pathlib.Path):    The filename & path of the symlink (fully
+                                prefixed up to the media directory)
+    
+    Returns:
+        dict:   An 'add-link' action:
+            {
+                "source" : pathlib.Path,
+                "dest"   : pathlib.Path,
+            }
+    """
+    common_path = pathlib.Path( os.path.commonpath( ( source, dest ) ) )
+    if common_path != common_path.root:
+        source = pathlib.Path( os.path.relpath( source, dest.parent ) )
+    return { "source" : source, "dest" : dest }
+
+
 def update( server, cache, database, trash, dry_run = False ):
     """Run a library update
     
@@ -274,7 +296,12 @@ def update( server, cache, database, trash, dry_run = False ):
             # Links to add
             for dest in new_dests - old_dests:
                 links_add[ dest ] = files[ dest ]
-            anime_manager.filesystem.add_links( links_add, trash, dry_run )
+            
+            links_add2 = {}
+            for dest, source in links_add.items():
+                l = relative_link_pair( source, dest )
+                links_add2[ l[ "dest" ] ] = l[ "source" ]
+            anime_manager.filesystem.add_links( links_add2, trash, dry_run )
             
             new_cache[ hash ][ "files" ] = files
         
@@ -338,7 +365,11 @@ def update( server, cache, database, trash, dry_run = False ):
                     source = source / episode[ "file" ]
                 # Replace placeholder suffix with source's
                 links[ dest.with_suffix( source.suffix ) ] = source
-            anime_manager.filesystem.add_links( links, trash, dry_run )
+            links_add = {}
+            for dest, source in links.items():
+                l = relative_link_pair( source, dest )
+                links_add[ l[ "dest" ] ] = l[ "source" ]
+            anime_manager.filesystem.add_links( links_add, trash, dry_run )
             new_cache[ hash ][ "files" ] = links
     
     except Exception as e:
