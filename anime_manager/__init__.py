@@ -1,5 +1,6 @@
 import anime_manager.arguments
 import anime_manager.database
+import anime_manager.filesystem
 import anime_manager.library
 import anime_manager.torrents
 
@@ -46,12 +47,13 @@ def reload_database( args ):
     
     cache_db = args.cache_dir / "flatdb_cache.yaml"
     
+    server = anime_manager.torrents.TransmissionServer( args.transmission )
+    
     # Load cached flat database
     try:
         with open( cache_db, encoding = "utf8" ) as old_db_file:
-            old_flatdb = anime_manager.database.normalize_flatdb(
-                yaml.full_load( old_db_file )
-            )
+            old_flatdb = yaml.full_load( old_db_file )
+            anime_manager.database.normalize_flatdb( server, old_flatdb )
             log.info( "loaded flat database cache" )
     except IOError:
         old_flatdb = anime_manager.database.empty_flatdb()
@@ -62,24 +64,29 @@ def reload_database( args ):
         new_db = anime_manager.database.normalize(
             yaml.full_load( db_file )
         )
-        directories = new_db[ "directories" ]
-        new_flatdb = anime_manager.database.flatten( new_db )
-        del new_db
     
     # Make changes
-    anime_manager.library.execute_actions(
-        anime_manager.torrents.TransmissionServer( args.transmission ),
-        anime_manager.database.diff( old_flatdb, new_flatdb ),
-        None if args.no_trash else directories[ "trash" ],
+    new_flatdb, exception = anime_manager.library.update(
+        server,
+        old_flatdb,
+        new_db,
+        None if args.no_trash else new_db[ "directories" ][ "trash" ],
         args.dry_run
     )
-    anime_manager.library.cleanup_empty_dirs( directories, args.dry_run )
+    anime_manager.filesystem.cleanup_empty_dirs(
+        new_db[ "directories" ],
+        args.dry_run
+    )
     
     # Save new database as cache
     if not args.dry_run:
         with open( cache_db, "w" ) as new_db_file:
             yaml.dump( new_flatdb, new_db_file )
             log.info( "saved new flat database cache" )
+    
+    # Finally, re-raise any exceptions thrown by update:
+    if exception is not None:
+        raise exception
 
 
 class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):

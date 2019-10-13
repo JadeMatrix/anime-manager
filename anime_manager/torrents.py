@@ -284,7 +284,7 @@ class TransmissionServer( object ):
             torrents (iterable):
                             Set of add-torrent actions, each in the form:
                                 {
-                                    "sources"  : { str, ... },
+                                    "source"   : str,
                                     "location" : pathlib.Path,
                                 }
             trash (pathlib.Path|None):
@@ -293,18 +293,10 @@ class TransmissionServer( object ):
         """
         
         for torrent in torrents:
-            sources = tuple( torrent[ "sources" ] )
-            if len( sources ) != 1:
-                log.warning(
-                    "Got {} sources for a torrent, expected exactly 1".format(
-                        len( source )
-                    )
-                )
-            
             ( print if dry_run else log.debug )(
                 "adding torrent to {!r} from {}".format(
                     torrent[ "location" ].as_posix(),
-                    sources
+                    torrent[ "source" ]
                 )
             )
             
@@ -312,12 +304,12 @@ class TransmissionServer( object ):
                 self.rpc(
                     "torrent-add",
                     {
-                        "filename"     : sources[ 0 ],
+                        "filename"     : torrent[ "source" ],
                         "download-dir" : torrent[ "location" ].as_posix(),
                     }
                 )
     
-    def torrent_name( self, torrents ):
+    def torrent_names( self, torrents ):
         """Get the names of the specified torrents
         
         Args:

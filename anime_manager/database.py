@@ -1,3 +1,5 @@
+import anime_manager.torrents
+
 import logging
 import os.path
 import pathlib
@@ -16,8 +18,9 @@ season_quarter_map = {
     "fall"   : "q4"
 }
 hash_regex = r"[0-9a-fA-F]{40}"
-name_placeholder = "$NAME:{}$"
-extension_placeholder = "$EXTENSION$"
+
+# Used for flatdb normalization
+placeholder_pattern = re.compile( r"\$NAME:(" + hash_regex + r")\$" )
 
 
 class InvalidDatabaseError( Exception ):
@@ -26,156 +29,6 @@ class InvalidDatabaseError( Exception ):
             self,
             "invalid database: {}".format( reason )
         )
-
-
-def year_quarter_for_torrent( db, hash ):
-    """Generate a standardized year-quarter subdirectory name for a torrent
-    
-    Args:
-        db (dict):  A full, unflattened database
-        hash (str): The torrent hash
-    
-    Returns:
-        str:    A string such as "2016q1" where the year and quarter (season)
-                are the first time a file in that torrent are linked as an
-                episode
-    """
-    
-    min_torrent_year    = 99999
-    min_torrent_quarter = "q9"
-    
-    for episode in db[ "torrents" ][ hash ][ "episodes" ]:
-        
-        season = episode[ "show" ][ "seasons" ][ episode[ "season" ] - 1 ]
-        
-        if season[ "year" ] < min_torrent_year:
-            min_torrent_year = season[ "year" ]
-        quarter = season_quarter_map[ season[ "season" ] ]
-        if quarter < min_torrent_quarter:
-            min_torrent_quarter = quarter
-    
-    return "{}{}".format( min_torrent_year, min_torrent_quarter )
-
-
-def show_link_for_episode( db, episode ):
-    """Generate an appropriate path for an episode within a season within a show
-    
-    Args:
-        db (dict):      A full, unflattened database
-        episode (dict): The relevant episode database entry
-    
-    Returns:
-        pathlib.Path:   The filename and path to which to symlink the episode
-                        (relative to the appropriate status directory), without
-                        an extension
-    """
-    
-    show = episode[ "show" ]
-    multiseason = len( show[ "seasons" ] ) > 1
-    season = show[ "seasons" ][ episode[ "season" ] - 1 ]
-    has_season_title = "title" in season
-    season_title = season[ "title" ] if has_season_title else show[ "title" ]
-    
-    link = pathlib.Path( show[ "title" ] )
-    
-    if "alt" in episode:
-        link = link / episode[ "alt" ]
-    
-    if multiseason:
-        if "title" in season:
-            link = link / "Season {} - {}".format(
-                episode[ "season" ],
-                season [ "title"  ]
-            )
-        else:
-            link = link / "Season {}".format( episode[ "season" ] )
-    
-    if "episodes" in season and season[ "episodes" ] == 1:
-        if multiseason and not has_season_title:
-            link = link / "{} - s{}.{}".format(
-                show[ "title" ],
-                episode[ "season" ],
-                extension_placeholder
-            )
-        else:
-            link = link / "{}.{}".format(
-                season_title,
-                extension_placeholder
-            )
-    else:
-        try:
-            try:
-                episode_string = "{:02d}".format( episode[ "episode" ] )
-            except ValueError:
-                episode_string = "{:f}".format( episode[ "episode" ] )
-                whole, decimal = episode_string.strip( "0" ).split(
-                    ".",
-                    maxsplit = 1
-                )
-                episode_string = "{:02}.{}".format(
-                    int( whole ),
-                    decimal if decimal else 0
-                )
-            if multiseason and not has_season_title:
-                episode_string = "e" + episode_string
-        except ValueError:
-            episode_string = " {}".format( episode[ "episode" ] )
-        
-        if multiseason and not has_season_title:
-            link = link / "{} - s{}{}.{}".format(
-                show[ "title" ],
-                episode[ "season" ],
-                episode_string,
-                extension_placeholder
-            )
-        else:
-            link = link / "{} - {}.{}".format(
-                season_title,
-                episode_string.strip(),
-                extension_placeholder
-            )
-    
-    return link
-
-
-def placeholder_filename( hash, location, file ):
-    """Generate a placeholder path to a file in a torrent with no metadata yet
-    
-    See `torrents.replace_placeholder_filename()`
-    
-    Args:
-        hash (str):                 The parent torrent's hash
-        location (pathlib.Path):    The parent torrent's download location
-        file (str|pathlib.Path):    The file in the torrent (or "." for the
-                                    entire torrent)
-    
-    Returns:
-        pathlib.Path:   A path that can have the torrent download name placed in
-                        it later once metadata is available / download starts
-    """
-    return location / name_placeholder.format( hash ) / file
-
-
-def relative_link_pair( source, dest ):
-    """Create an 'add-link' action so that the source is relative, if possible
-    
-    Args:
-        source (pathlib.Path):  The target of the symlink, as cached (fully
-                                prefixed up to the media directory)
-        dest (pathlib.Path):    The filename & path of the symlink (fully
-                                prefixed up to the media directory)
-    
-    Returns:
-        dict:   An 'add-link' action:
-            {
-                "source" : pathlib.Path,
-                "dest"   : pathlib.Path,
-            }
-    """
-    common_path = pathlib.Path( os.path.commonpath( ( source, dest ) ) )
-    if common_path != common_path.root:
-        source = pathlib.Path( os.path.relpath( source, dest.parent ) )
-    return { "source" : source, "dest" : dest }
 
 
 def empty_database():
@@ -384,205 +237,52 @@ def normalize( db ):
     return db
 
 
-def flatten( db ):
-    """Turn a full database into a form suitable for caching (flat database)
-    
-    Args:
-        db (dict):  A full database
-    
-    Returns:
-        dict:   A flat database
-    """
-    
-    flatdb = empty_flatdb()
-    
-    stati = {}
-    for status, shows in db[ "shows" ].items():
-        for show in shows:
-            stati[ show[ "title" ] ] = status
-    
-    for hash, torrent in db[ "torrents" ].items():
-        flatdb[ hash ] = {
-            "sources"  : set( [ torrent[ "source" ] ] ),
-            "location" : (
-                db[ "directories" ][ "torrents" ]
-                / year_quarter_for_torrent( db, hash )
-            ),
-            "files"    : {},
-            "archived" : torrent[ "archived" ],
-        }
-        for episode in torrent[ "episodes" ]:
-            if "file" in episode:
-                filename = episode[ "file" ]
-            else:
-                filename = pathlib.Path()
-            
-            flatdb[ hash ][ "files" ][
-                db[ "directories" ][ stati[ episode[ "show" ][ "title" ] ] ]
-                / show_link_for_episode( db, episode )
-            ] = (
-                flatdb[ hash ][ "location" ]
-                / name_placeholder.format( hash )
-                / filename
-            )
-    
-    return flatdb
-
-
-def normalize_flatdb( flatdb ):
+def normalize_flatdb( server, flatdb ):
     """Normalize a flat database to the current spec
     
     Important for manager version upgrades; essentially a no-op if the format
-    has not changed.
+    has not changed.  Only flat database format changes that effect the logic
+    of the rest of the utility are handled here; that is, anything an silent
+    library rebuild won't fix.
     
     Args:
-        flatdb (dict):  A flat database
-    
-    Returns:
-        dict:   The flat database normalized to the current spec
+        server (torrents.TransmissionServer):
+                        The Transmission server to use as a reference
+        flatdb (dict):  A flat database to normalize in-place
     """
     
-    normalized = empty_flatdb()
-    
-    for hash, torrent in flatdb.items():
-        normalized[ hash ] = dict( torrent )
-        if "archived" not in normalized[ hash ]:
-            normalized[ hash ][ "archived" ] = False
-    
-    return normalized
+    for hash, entry in flatdb.items():
+        # Field "archived" added 09/03/2019 ####################################
+        if "archived" not in entry:
+            entry[ "archived" ] = False
+        
+        # Placeholder paths replaced with full paths 10/12/2019 ################
+        if "files" not in entry:
+            entry[ "files" ] = {}
+        # Copy of keys iterable as we may be modifying the dictionary
+        dests = tuple( entry[ "files" ].keys() )
+        
+        for dest in dests:
+            # Look for & replace placeholder filenames
+            new_source = []
+            for part in entry[ "files" ][ dest ].parts:
+                match = placeholder_pattern.match( part )
+                if match:
+                    hash = match.group( 1 )
+                    new_source.append(
+                        server.torrent_names( ( hash, ) )[ hash ]
+                    )
+                else:
+                    new_source.append( part )
+            source = pathlib.Path( *new_source )
+            
+            if dest.suffix == ".$EXTENSION$":
+                del entry[ "files" ][ dest ]
+                dest = dest.with_suffix( source.suffix )
+            entry[ "files" ][ dest ] = source
+        
+        # Torrent source history removed 10/12/2019 ############################
+        if "sources" in entry:
+            source = tuple( entry[ "sources" ] )[ -1 ]
+            entry[ "source" ] = source
 
-
-def diff( old, new ):
-    """Diff two flat databases by generating a set of actions to perform
-    
-    Args:
-        old (dict): Previous flat database
-        new (dict): Replacement flat database
-    
-    Returns:
-        dict:   A set of actions in the form:
-            {
-                "links" : {
-                    "remove" : [ pathlib.Path, ... ],
-                    "add"    : [
-                        { "source" : pathlib.Path, "dest" : pathlib.Path, },
-                        ...
-                    ],
-                },
-                "torrents" : {
-                    "remove" : [ hash (str), ... ],
-                    "source" : [
-                        { "hash" : str, "sources" : set[str], },
-                        ...
-                    ],
-                    "move"   : [
-                        { "hash" : str, "location" : pathlib.Path },
-                        ...
-                    ],
-                    "add"    : [
-                        { "source" : str, "location" : pathlib.Path, },
-                        ...
-                    ],
-                    "status" : [
-                        { "hash" : str, "started" : bool },
-                        ...
-                    ],
-                },
-            }
-    """
-    
-    old_hashes = set( old.keys() )
-    new_hashes = set( new.keys() )
-    
-    actions = {
-        "links" : {
-            "remove" : [],
-            "add"    : [],
-        },
-        "torrents" : {
-            "remove" : [],
-            "source" : [],
-            "move"   : [],
-            "add"    : [],
-            "status" : [],
-        },
-    }
-    
-    for hash in new_hashes - old_hashes:
-        actions[ "torrents" ][ "add" ].append( {
-            "sources"  : new[ hash ][ "sources"  ],
-            "location" : new[ hash ][ "location" ],
-        } )
-        for dest, source in new[ hash ][ "files" ].items():
-            actions[ "links" ][ "add" ].append( relative_link_pair(
-                placeholder_filename(
-                    hash,
-                    new[ hash ][ "location" ],
-                    source
-                ),
-                dest
-            ) )
-    
-    for hash in old_hashes - new_hashes:
-        actions[ "torrents" ][ "remove" ].append( hash )
-        for dest in old[ hash ][ "files" ].keys():
-            actions[ "links" ][ "remove" ].append( dest )
-    
-    for hash in new_hashes & old_hashes:
-        new_sources = new[ hash ][ "sources" ] - old[ hash ][ "sources" ]
-        if new_sources:
-            actions[ "torrents" ][ "source" ].append( {
-                "hash"    : hash,
-                "sources" : new_sources,
-            } )
-        
-        if new[ hash ][ "location" ] != old[ hash ][ "location" ]:
-            actions[ "torrents" ][ "move" ].append( {
-                "hash"     : hash,
-                "location" : new[ hash ][ "location" ],
-            } )
-        
-        old_links = set( old[ hash ][ "files" ].keys() )
-        new_links = set( new[ hash ][ "files" ].keys() )
-        
-        for link in new_links - old_links:
-            actions[ "links" ][ "add" ].append( relative_link_pair(
-                placeholder_filename(
-                    hash,
-                    new[ hash ][ "location" ],
-                    new[ hash ][ "files" ][ link ]
-                ),
-                link
-            ) )
-        
-        for link in old_links - new_links:
-            actions[ "links" ][ "remove" ].append( link )
-        
-        for link in old_links & new_links:
-            if new[ hash ][ "files" ][ link ] != old[ hash ][ "files" ][ link ]:
-                actions[ "links" ][ "remove" ].append( link )
-                actions[ "links" ][ "add" ].append( relative_link_pair(
-                    placeholder_filename(
-                        hash,
-                        new[ hash ][ "location" ],
-                        new[ hash ][ "files" ][ link ]
-                    ),
-                    link
-                ) )
-    
-    for hash in new_hashes:
-        new_archived = new[ hash ][ "archived" ]
-        if hash in old:
-            if new_archived != old[ hash ][ "archived" ]:
-                actions[ "torrents" ][ "status" ].append( {
-                    "hash"    : hash,
-                    "started" : not new_archived,
-                } )
-        elif new_archived:
-            # Default status is started, so only stop new archived torrents
-            actions[ "torrents" ][ "status" ].append( {
-                "hash"    : hash,
-                "started" : False,
-            } )
-    
-    return actions
