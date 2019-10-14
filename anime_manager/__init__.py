@@ -51,37 +51,41 @@ def reload_database( args ):
     
     # Load cached flat database
     try:
-        with open( cache_db, encoding = "utf8" ) as old_db_file:
-            old_flatdb = yaml.full_load( old_db_file )
-            anime_manager.database.normalize_flatdb( server, old_flatdb )
+        with open( cache_db, encoding = "utf8" ) as cache_file:
+            cache = yaml.full_load( cache_file )
+            anime_manager.database.normalize_flatdb( server, cache )
             log.info( "loaded flat database cache" )
     except IOError:
-        old_flatdb = anime_manager.database.empty_flatdb()
+        cache = anime_manager.database.empty_flatdb()
         log.info( "no flat database cache, creating" )
     
     # Load new database
     with open( args.database, encoding = "utf8" ) as db_file:
-        new_db = anime_manager.database.normalize(
-            yaml.full_load( db_file )
-        )
+        db = anime_manager.database.normalize( yaml.full_load( db_file ) )
     
-    # Make changes
-    new_flatdb, exception = anime_manager.library.update(
-        server,
-        old_flatdb,
-        new_db,
-        None if args.no_trash else new_db[ "directories" ][ "trash" ],
-        args.dry_run
-    )
-    anime_manager.filesystem.cleanup_empty_dirs(
-        new_db[ "directories" ],
-        args.dry_run
-    )
+    exception = None
+    
+    try:
+        # Make changes
+        anime_manager.library.update(
+            server,
+            cache,
+            db,
+            None if args.no_trash else db[ "directories" ][ "trash" ],
+            args.dry_run
+        )
+        anime_manager.filesystem.cleanup_empty_dirs(
+            db[ "directories" ],
+            args.dry_run
+        )
+    except Exception as e:
+        exception = e
+    
     
     # Save new database as cache
     if not args.dry_run:
-        with open( cache_db, "w" ) as new_db_file:
-            yaml.dump( new_flatdb, new_db_file )
+        with open( cache_db, "w" ) as cache_file:
+            yaml.dump( cache, cache_file )
             log.info( "saved new flat database cache" )
     
     # Finally, re-raise any exceptions thrown by update:

@@ -170,8 +170,8 @@ class TransmissionServer( object ):
             torrents (iterable):
                             Set of re-source-torrent actions, each in the form:
                                 {
-                                    "hash"    : str,
-                                    "sources" : { str, ... }
+                                    "hash"   : str,
+                                    "source" : str
                                 }
             trash (pathlib.Path|None):
                             Trash directory (see `filesystem.trash_item()`)
@@ -179,9 +179,9 @@ class TransmissionServer( object ):
         """
         for torrent in torrents:
             ( print if dry_run else log.debug )(
-                "adding sources for torrent {!r} from {}".format(
+                "adding source for torrent {!r} from {}".format(
                     torrent[ "hash" ],
-                    tuple( torrent[ "sources" ] )
+                    torrent[ "source" ]
                 )
             )
             log.warning( "{}.{}.source_torrents() not implemented".format(
