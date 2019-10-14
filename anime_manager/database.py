@@ -1,4 +1,5 @@
 import anime_manager.torrents
+import anime_manager.library
 
 import logging
 import os.path
@@ -279,4 +280,10 @@ def normalize_flatdb( server, flatdb ):
         if "sources" in entry:
             source = tuple( entry[ "sources" ] )[ -1 ]
             entry[ "source" ] = source
+        
+        # Preservation of relative symlinks in cache added 10/14/2019 ##########
+        entry[ "files" ] = dict(
+            anime_manager.library.relative_link_pair( dest, source )
+            for dest, source in entry[ "files" ].items()
+        )
 
