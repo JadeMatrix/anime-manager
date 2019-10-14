@@ -286,8 +286,12 @@ def normalize_flatdb( server, flatdb ):
             entry[ "source" ] = source
         
         # Preservation of relative symlinks in cache added 10/14/2019 ##########
-        entry[ "files" ] = dict(
-            anime_manager.library.relative_link_pair( dest, source )
-            for dest, source in entry[ "files" ].items()
-        )
+        files = {}
+        for dest, source in entry[ "files" ].items():
+            if dest.is_absolute() and source .is_absolute():
+                d, s = anime_manager.library.relative_link_pair( dest, source )
+                files[ d ] = s
+            else:
+                files[ dest ] = source
+        entry[ "files" ] = files
 
