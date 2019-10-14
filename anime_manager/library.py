@@ -132,13 +132,13 @@ def show_link_for_episode( db, episode ):
     return link
 
 
-def relative_link_pair( source, dest ):
+def relative_link_pair( dest, source ):
     """Modify a source & destination so that the source is relative, if possible
     
     Args:
-        source (pathlib.Path):  The target of the symlink, as cached (fully
-                                prefixed up to the media directory)
         dest (pathlib.Path):    The filename & path of the symlink (fully
+                                prefixed up to the media directory)
+        source (pathlib.Path):  The target of the symlink, as cached (fully
                                 prefixed up to the media directory)
     
     Returns:
@@ -148,7 +148,7 @@ def relative_link_pair( source, dest ):
     common_path = pathlib.Path( os.path.commonpath( ( source, dest ) ) )
     if common_path != common_path.root:
         source = pathlib.Path( os.path.relpath( source, dest.parent ) )
-    return source, dest
+    return dest, source
 
 
 def update( server, cache, db, trash, dry_run = False ):
@@ -257,7 +257,7 @@ def update( server, cache, db, trash, dry_run = False ):
                 # Replace placeholder suffix with source's
                 ).with_suffix( source.suffix )
                 
-                source, dest = relative_link_pair( source, dest )
+                dest, source = relative_link_pair( dest, source )
                 
                 files[ dest ] = source
             
