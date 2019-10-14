@@ -11,6 +11,13 @@ import time
 
 log = logging.getLogger( __name__ )
 
+season_quarter_map = {
+    "winter" : "q1",
+    "spring" : "q2",
+    "summer" : "q3",
+    "fall"   : "q4"
+}
+
 
 def year_quarter_for_torrent( db, hash ):
     """Generate a standardized year-quarter subdirectory name for a torrent
@@ -34,9 +41,7 @@ def year_quarter_for_torrent( db, hash ):
         
         if season[ "year" ] < min_torrent_year:
             min_torrent_year = season[ "year" ]
-        quarter = anime_manager.database.season_quarter_map[
-            season[ "season" ]
-        ]
+        quarter = season_quarter_map[ season[ "season" ] ]
         if quarter < min_torrent_quarter:
             min_torrent_quarter = quarter
     

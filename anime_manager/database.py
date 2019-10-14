@@ -10,13 +10,6 @@ import yaml
 
 log = logging.getLogger( __name__ )
 
-
-season_quarter_map = {
-    "winter" : "q1",
-    "spring" : "q2",
-    "summer" : "q3",
-    "fall"   : "q4"
-}
 hash_regex = r"[0-9a-fA-F]{40}"
 
 # Used for flatdb normalization
@@ -197,13 +190,14 @@ def normalize( db ):
                         "{!r}: {!r}"
                     ).format( torrent_hash, e ) )
                 
-                if season[ "season" ] not in season_quarter_map:
+                sqm = anime_manager.library.season_quarter_map
+                if season[ "season" ] not in sqm:
                     raise InvalidDatabaseError( (
                         "yearly season for season for show for torrent ID {!r} "
                         "not one of {}"
                     ).format(
                         torrent_hash,
-                        tuple( season_quarter_map.keys() )
+                        tuple( sqm.keys() )
                     ) )
                 
                 if "episodes" in season:
