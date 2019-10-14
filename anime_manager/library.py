@@ -152,7 +152,7 @@ def relative_link_pair( source, dest ):
 def update_old(
     server,
     cache,
-    database,
+    db,
     hashes,
     new_cache,
     stati,
@@ -167,7 +167,7 @@ def update_old(
         server (torrents.TransmissionServer):
                             The Transmission server to use as a reference
         cache (dict):       Cached flat database
-        database (dict):    Newly loaded full database
+        db (dict):          Newly loaded full database
         hashes (set[str]):  Torrent hashes to remove from library, pre-generated
                             for reuse
         new_cache (dict):   New flatdb to insert new state into
@@ -191,7 +191,7 @@ def update_old(
 def update_keep(
     server,
     cache,
-    database,
+    db,
     hashes,
     new_cache,
     stati,
@@ -206,7 +206,7 @@ def update_keep(
         server (torrents.TransmissionServer):
                             The Transmission server to use as a reference
         cache (dict):       Cached flat database
-        database (dict):    Newly loaded full database
+        db (dict):          Newly loaded full database
         hashes (set[str]):  Torrent hashes to check for updates, pre-generated
                             for reuse
         new_cache (dict):   New flatdb to insert new state into
@@ -230,7 +230,7 @@ def update_keep(
     torrents_move    = []
     torrents_archive = []
     for hash in hashes:
-        new_source = database[ "torrents" ][ hash ][ "source" ]
+        new_source = db[ "torrents" ][ hash ][ "source" ]
         if cache[ hash ][ "source" ] != new_source :
             torrents_source.append( {
                 "hash"   : hash,
@@ -238,8 +238,8 @@ def update_keep(
             } )
         
         download_to = (
-            database[ "directories" ][ "torrents" ]
-            / year_quarter_for_torrent( database, hash )
+            db[ "directories" ][ "torrents" ]
+            / year_quarter_for_torrent( db, hash )
         )
         
         if download_to != cache[ hash ][ "location" ]:
@@ -248,10 +248,10 @@ def update_keep(
                 "location" : download_to,
             } )
         
-        if cache[ hash ][ "archived" ] != database[ "torrents" ][ hash ][ "archived" ]:
+        if cache[ hash ][ "archived" ] != db[ "torrents" ][ hash ][ "archived" ]:
             torrents_archive.append( {
                 "hash"    : hash,
-                "started" : not database[ "torrents" ][ hash ][ "archived" ],
+                "started" : not db[ "torrents" ][ hash ][ "archived" ],
             } )
     
     server.source_torrents( torrents_source, trash, dry_run )
@@ -294,10 +294,10 @@ def update_keep(
         links_add    = {}
         
         files = {}
-        for episode in database[ "torrents" ][ hash ][ "episodes" ]:
-            dest = database[ "directories" ][
+        for episode in db[ "torrents" ][ hash ][ "episodes" ]:
+            dest = db[ "directories" ][
                 stati[ episode[ "show" ][ "title" ] ]
-            ] / show_link_for_episode( database, episode )
+            ] / show_link_for_episode( db, episode )
             source = (
                 new_cache[ hash ][ "location" ]
                 / torrent_names[ hash ]
@@ -335,7 +335,7 @@ def update_keep(
 def update_new(
     server,
     cache,
-    database,
+    db,
     hashes,
     new_cache,
     stati,
@@ -350,7 +350,7 @@ def update_new(
         server (torrents.TransmissionServer):
                             The Transmission server to use as a reference
         cache (dict):       Cached flat database
-        database (dict):    Newly loaded full database
+        db (dict):          Newly loaded full database
         hashes (set[str]):  Torrent hashes to add to the library, pre-generated
                             for reuse
         new_cache (dict):   New flatdb to insert new state into
@@ -365,18 +365,18 @@ def update_new(
     add_torrents = []
     for hash in hashes:
         download_to = (
-            database[ "directories" ][ "torrents" ]
-            / year_quarter_for_torrent( database, hash )
+            db[ "directories" ][ "torrents" ]
+            / year_quarter_for_torrent( db, hash )
         )
         add_torrents.append( {
-            "source"   : database[ "torrents" ][ hash ][ "source" ],
+            "source"   : db[ "torrents" ][ hash ][ "source" ],
             "location" : download_to,
-            "started"  : not database[ "torrents" ][ hash ][ "archived" ],
+            "started"  : not db[ "torrents" ][ hash ][ "archived" ],
         } )
         new_cache[ hash ] = {
-            "source"   : database[ "torrents" ][ hash ][ "source" ],
+            "source"   : db[ "torrents" ][ hash ][ "source" ],
             "location" : download_to,
-            "archived" : database[ "torrents" ][ hash ][ "archived" ],
+            "archived" : db[ "torrents" ][ hash ][ "archived" ],
         }
     server.add_torrents( add_torrents, trash, dry_run )
     
@@ -406,10 +406,10 @@ def update_new(
     
     for hash in hashes:
         links = {}
-        for episode in database[ "torrents" ][ hash ][ "episodes" ]:
-            dest = database[ "directories" ][
+        for episode in db[ "torrents" ][ hash ][ "episodes" ]:
+            dest = db[ "directories" ][
                 stati[ episode[ "show" ][ "title" ] ]
-            ] / show_link_for_episode( database, episode )
+            ] / show_link_for_episode( db, episode )
             source = (
                 new_cache[ hash ][ "location" ]
                 / torrent_names[ hash ]
@@ -426,14 +426,14 @@ def update_new(
         new_cache[ hash ][ "files" ] = links
 
 
-def update( server, cache, database, trash, dry_run = False ):
+def update( server, cache, db, trash, dry_run = False ):
     """Run a library update
     
     Args:
         server (torrents.TransmissionServer):
                             The Transmission server to use as a reference
         cache (dict):       Cached flat database
-        database (dict):    Newly loaded full database
+        db (dict):          Newly loaded full database
         trash (pathlib.Path|None):
                             Trash directory (see `filesystem.trash_item()`)
         dry_run (bool):     Whether to skip actually executing actions
@@ -446,12 +446,12 @@ def update( server, cache, database, trash, dry_run = False ):
     """
     
     old_hashes = set( cache.keys() )
-    new_hashes = set( database[ "torrents" ].keys() )
+    new_hashes = set( db[ "torrents" ].keys() )
     
     new_cache = anime_manager.database.empty_flatdb()
     
     stati = {}
-    for status, shows in database[ "shows" ].items():
+    for status, shows in db[ "shows" ].items():
         for show in shows:
             stati[ show[ "title" ] ] = status
     
@@ -464,7 +464,7 @@ def update( server, cache, database, trash, dry_run = False ):
             action(
                 server,
                 cache,
-                database,
+                db,
                 hashes,
                 new_cache,
                 stati,
