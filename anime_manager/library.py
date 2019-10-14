@@ -143,6 +143,7 @@ def relative_link_pair( source, dest ):
                 "dest"   : pathlib.Path,
             }
     """
+    
     common_path = pathlib.Path( os.path.commonpath( ( source, dest ) ) )
     if common_path != common_path.root:
         source = pathlib.Path( os.path.relpath( source, dest.parent ) )
@@ -248,7 +249,10 @@ def update_keep(
                 "location" : download_to,
             } )
         
-        if cache[ hash ][ "archived" ] != db[ "torrents" ][ hash ][ "archived" ]:
+        if (
+            cache[ hash ][ "archived" ]
+            != db[ "torrents" ][ hash ][ "archived" ]
+        ):
             torrents_archive.append( {
                 "hash"    : hash,
                 "started" : not db[ "torrents" ][ hash ][ "archived" ],
