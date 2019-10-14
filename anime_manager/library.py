@@ -2,8 +2,8 @@ import anime_manager.filesystem
 import anime_manager.torrents
 import anime_manager.database
 
-# import itertools
 import logging
+import os.path
 import pathlib
 import re
 import time
