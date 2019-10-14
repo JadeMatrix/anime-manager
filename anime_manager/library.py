@@ -1,11 +1,9 @@
 import anime_manager.filesystem
 import anime_manager.torrents
-import anime_manager.database
 
 import logging
 import os.path
 import pathlib
-import re
 import time
 
 
@@ -36,8 +34,15 @@ def year_quarter_for_torrent( db, hash ):
     min_torrent_quarter = "q9"
     
     for episode in db[ "torrents" ][ hash ][ "episodes" ]:
-        
-        season = episode[ "show" ][ "seasons" ][ episode[ "season" ] - 1 ]
+        if "pattern" in episode:
+            if "season" in episode[ "pattern" ]:
+                season = episode[ "show" ][ "seasons" ][
+                    episode[ "pattern" ][ "season" ] - 1
+                ]
+            else:
+                continue
+        else:
+            season = episode[ "show" ][ "seasons" ][ episode[ "season" ] - 1 ]
         
         if season[ "year" ] < min_torrent_year:
             min_torrent_year = season[ "year" ]
@@ -151,6 +156,88 @@ def relative_link_pair( dest, source ):
     return dest, source
 
 
+def expand_episodes( server, db, hash ):
+    """Expand a list of database episode entries
+    
+    Args:
+        server (torrents.TransmissionServer):
+                    The Transmission server to use as a reference
+        db (dict):  A full, unflattened database
+        hash (str): The torrent hash
+    
+    Returns:
+        list (dict):    A database list of torrent episodes with patterns
+                        expanded
+    """
+    
+    torrent_files = None
+    episodes = []
+    
+    for episode in db[ "torrents" ][ hash ][ "episodes" ]:
+        
+        if "pattern" in episode:
+            pattern = episode[ "pattern" ]
+            match_fields = ( "episode", "season", "alt", )
+            if torrent_files is None:
+                torrent_files = server.torrent_files( ( hash, ) )[ hash ]
+            
+            for torrent_file in torrent_files:
+                # File without top-level name, as expected in the database
+                file = pathlib.Path( *torrent_file.parts[ 1 : ] )
+                
+                generated = {
+                    "show" : episode[ "show" ],
+                    "file" : file,
+                }
+                for field in match_fields:
+                    if field in pattern:
+                        generated[ field ] = pattern[ field ]
+                
+                match = pattern[ "regex" ].match( file.as_posix() )
+                if not match:
+                    continue
+                
+                for field in match_fields:
+                    if field not in pattern[ "matches" ]:
+                        continue
+                    
+                    try:
+                        value = match.group(
+                            pattern[ "matches" ][ field ][ "group" ]
+                        )
+                        if field in ( "episode", "season", ):
+                            try:
+                                generated[ field ] = int( value )
+                                if "offset" in pattern[ "matches" ][ field ]:
+                                    generated[ field ] -= (
+                                        pattern[ "matches" ][ field ][ "offset" ]
+                                    )
+                            except ValueError:
+                                generated[ field ] = value
+                        else:
+                            generated[ field ] = value
+                    except IndexError:
+                        pass
+                
+                # Skip any files that matched but are missing fields
+                if sum( f not in generated for f in ( "episode", "season", ) ):
+                    log.warning( (
+                        "torrent {!r} file {!r} matched regex {!r} but "
+                        "required fields are missing, skipping"
+                    ).format(
+                        hash,
+                        file.as_posix(),
+                        pattern[ "regex" ].pattern
+                    ) )
+                else:
+                    episodes.append( generated )
+        
+        else:
+            episodes.append( episode )
+    
+    return episodes
+
+
 def update( server, cache, db, trash, dry_run = False ):
     """Run a library update
     
@@ -230,7 +317,9 @@ def update( server, cache, db, trash, dry_run = False ):
                 }, ), trash, dry_run )
                 cache[ hash ][ "archived" ] = archived
         
-        if check_links:
+        episodes = expand_episodes( server, db, hash )
+        
+        if check_links or episodes != db[ "torrents" ][ hash ][ "episodes" ]:
             try:
                 name = server.torrent_names( ( hash, ) )[ hash ]
             except anime_manager.torrents.RPCError:
@@ -240,8 +329,7 @@ def update( server, cache, db, trash, dry_run = False ):
                 else:
                     raise
             
-            episodes = db[ "torrents" ][ hash ][ "episodes" ]
-            files    = {}
+            files = {}
             
             for episode in episodes:
                 status = stati[ episode[ "show" ][ "title" ] ]

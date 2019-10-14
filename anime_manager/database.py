@@ -146,6 +146,29 @@ def normalize( db ):
             )
         
         for episode in torrent_config[ "episodes" ]:
+            if "pattern" in episode:
+                if "regex" not in episode[ "pattern" ]:
+                    raise InvalidDatabaseError(
+                        (
+                            "torrent ID {!r} specifies pattern with no 'regex' "
+                            "field"
+                        ).format(
+                            torrent_hash,
+                        )
+                    )
+                else:
+                    try:
+                        episode[ "pattern" ][ "regex" ] = re.compile(
+                            episode[ "pattern" ][ "regex" ]
+                        )
+                    except re.error as ree:
+                        raise InvalidDatabaseError( (
+                            "invalid episode regex for torrent ID {!r}: {!r}"
+                        ).format( torrent_hash, e ) )
+                
+                # TODO: Validation & normalization
+                continue
+            
             if "episode" not in episode:
                 episode[ "episode" ] = 1
             
@@ -209,25 +232,6 @@ def normalize( db ):
                             "invalid episode count for season for show for "
                             "torrent ID {!r}: {!r}"
                         ).format( torrent_hash, e ) )
-        
-        # episodes = []
-        # if "episodes" in torrent_config:
-        #     pass
-        #     del torrent_config[ "episodes" ]
-        #     torrent_config[ "episodes" ] = episodes
-        # elif "episode" in torrent_config:
-        #     pass
-        #     del torrent_config[ "episode" ]
-        #     torrent_config[ "episodes" ] = episodes
-        # # elif "episode map" in torrent_config:
-        # #     pass
-        # else:
-        #     raise InvalidDatabaseError(
-        #         (
-        #             "torrent ID %r missing required key 'episode', 'episodes',"
-        #             " or 'episode map'"
-        #         ) % ( torrent_hash, )
-        #     )
     
     return db
 

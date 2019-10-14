@@ -340,3 +340,39 @@ class TransmissionServer( object ):
             )
         else:
             return names
+    
+    def torrent_files( self, torrents ):
+        """Get the names of files included in the specified torrents
+        
+        Args:
+            torrents (iterable): Set of torrent hashes
+        
+        Returns:
+            dict:   A map of the specified torrent hashes to a list of filenames
+                    as `pathlib.Path`s
+        """
+        
+        torrents = list( torrents )
+        
+        files = dict(
+            (
+                t[ "hashString" ],
+                list( pathlib.Path( f[ "name" ] ) for f in t[ "files" ] )
+            ) for t in self.rpc(
+                "torrent-get",
+                {
+                    "ids"    : torrents,
+                    "fields" : ( "hashString", "files", ),
+                }
+            )[ "torrents" ]
+        )
+        
+        failed_hashes = set( torrents ) - set( files.keys() )
+        if failed_hashes:
+            raise RPCError(
+                self.location,
+                "success", # Server itself will report success
+                "no such torrent(s): {}".format( ", ".join( failed_hashes ) )
+            )
+        else:
+            return files
