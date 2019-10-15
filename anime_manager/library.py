@@ -278,7 +278,7 @@ def update( server, cache, db, trash, dry_run = False ):
         source   = db[ "torrents" ][ hash ][ "source"   ]
         archived = db[ "torrents" ][ hash ][ "archived" ]
         
-        check_links = False
+        check_links = True
         
         if hash not in cache:
             server.add_torrents( ( {
@@ -292,7 +292,6 @@ def update( server, cache, db, trash, dry_run = False ):
                 "archived" : archived,
                 "files"    : {},
             }
-            check_links = True
         
         else:
             if location != cache[ hash ][ "location" ]:
@@ -301,7 +300,6 @@ def update( server, cache, db, trash, dry_run = False ):
                     "location" : location,
                 }, ), trash, dry_run )
                 cache[ hash ][ "location" ] = location
-                check_links = True
             
             if source != cache[ hash ][ "source" ]:
                 server.source_torrents( ( {
@@ -317,9 +315,7 @@ def update( server, cache, db, trash, dry_run = False ):
                 }, ), trash, dry_run )
                 cache[ hash ][ "archived" ] = archived
         
-        episodes = expand_episodes( server, db, hash )
-        
-        if check_links or episodes != db[ "torrents" ][ hash ][ "episodes" ]:
+        if check_links:
             try:
                 name = server.torrent_names( ( hash, ) )[ hash ]
             except anime_manager.torrents.RPCError:
@@ -331,7 +327,7 @@ def update( server, cache, db, trash, dry_run = False ):
             
             files = {}
             
-            for episode in episodes:
+            for episode in expand_episodes( server, db, hash ):
                 status = stati[ episode[ "show" ][ "title" ] ]
                 if "file" in episode:
                     file = episode[ "file" ]
