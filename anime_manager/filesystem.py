@@ -1,5 +1,5 @@
 import logging
-import os.path
+import pathlib
 import shutil
 import uuid
 
@@ -29,7 +29,10 @@ def trash_item( item, trash_directory ):
         trashed_path = (
             trash_directory
             / str( uuid.uuid4() )
-            / os.path.relpath( item )
+            / (
+                pathlib.Path( *item.parts[ 1 : ] )
+                if item.is_absolute() else item
+            )
         )
         log.info( "trashing {!r} to {!r}".format(
             item.as_posix(),
