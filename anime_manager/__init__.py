@@ -49,19 +49,25 @@ def reload_database( args ):
     
     server = anime_manager.torrents.TransmissionServer( args.transmission )
     
+    # Load new database
+    with open( args.database, encoding = "utf8" ) as db_file:
+        db = anime_manager.database.normalize( yaml.full_load( db_file ) )
+    
     # Load cached flat database
     try:
         with open( cache_db, encoding = "utf8" ) as cache_file:
             cache = yaml.full_load( cache_file )
-            anime_manager.database.normalize_flatdb( server, cache )
             log.info( "loaded flat database cache" )
     except IOError:
         cache = anime_manager.database.empty_flatdb()
         log.info( "no flat database cache, creating" )
     
-    # Load new database
-    with open( args.database, encoding = "utf8" ) as db_file:
-        db = anime_manager.database.normalize( yaml.full_load( db_file ) )
+    anime_manager.database.normalize_flatdb( server, cache, db )
+    
+    # DEBUG:
+    import sys
+    yaml.dump( cache, sys.stdout )
+    exit()
     
     exception = None
     

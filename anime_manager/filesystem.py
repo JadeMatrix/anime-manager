@@ -134,3 +134,20 @@ def add_links( links, trash, dry_run = False ):
             dest.parent.mkdir( parents = True, exist_ok = True )
             dest.symlink_to( source )
 
+
+def path_endswith( path, suffix ):
+    """Check that a path ends with a suffix similar to `str.endswith()`
+    
+    Args:
+        path (pathlib.Path)
+        suffix (pathlib.Path)
+    
+    Returns:
+        bool
+    """
+    
+    for j in range( len( suffix.parts ) ):
+        i = -1 - j
+        if suffix.parts[ i ] != path.parts[ i ]:
+            return False
+    return True
