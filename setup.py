@@ -4,7 +4,7 @@ import setuptools
 
 setuptools.setup(
     name = "anime_manager",
-    version = "1.1.dev",
+    version = "1.2.dev",
     author = "JadeMatrix",
     author_email = "jadematrix.art@gmail.com",
     description = (
