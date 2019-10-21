@@ -66,7 +66,10 @@ def reload_database( args ):
     
     # DEBUG:
     import sys
-    yaml.dump( cache, sys.stdout )
+    yaml.dump(
+        anime_manager.torrents.filter_paths_for_json( cache ),
+        sys.stdout
+    )
     exit()
     
     exception = None
