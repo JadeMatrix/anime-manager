@@ -68,6 +68,7 @@ def flatdb_v5_to_v6( server, flatdb, db ):
             links.append( ( dest, {
                 "torrent" : torrents[ hash ],
                 "file"    : file,
+                "dest"    : dest,
             } ) )
     
     # Sanity check
@@ -362,7 +363,6 @@ def flatdb_v5_to_v6( server, flatdb, db ):
     flatdb.update( {
         "version"     : 6,
         "shows"       : shows,
-        "links"       : links,
         "torrents"    : torrents,
         "directories" : directories,
     } )

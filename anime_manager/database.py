@@ -61,7 +61,6 @@ def empty_flatdb():
     return {
         "version"     : current_flatdb_version,
         "shows"       : {},
-        "links"       : {},
         "torrents"    : {},
         "directories" : {},
     }
