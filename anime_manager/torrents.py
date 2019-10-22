@@ -1,6 +1,7 @@
 import anime_manager.database
 import anime_manager.filesystem
 
+import copy
 import json
 import logging
 import os.path
@@ -23,10 +24,14 @@ class RPCError( Exception ):
         )
 
 
-def filter_paths_for_json( val ):
+def filter_paths( val ):
     """Recursively scan a structure for `pathlib.Paths`s and stringify them
     
-    Calls `pathlib.Path.as_posix()` on each appropriate object.
+    Calls `pathlib.Path.as_posix()` on each appropriate object.  Preserves
+    object identity if possible (e.g. structural loops).
+    
+    For compatibility with the `json` module, `set`s are also converted to
+    `tuple`s.
     
     Args:
         val (any):  The structure to filter
@@ -35,23 +40,34 @@ def filter_paths_for_json( val ):
         A copy of the same structure with `pathlib.Paths`s replaced by `str`s
     """
     
-    try:
-        return val.as_posix()
-    except AttributeError:
-        if (
-               issubclass( type( val ), list )
-            or issubclass( type( val ), tuple )
-        ):
-            return type( val )( filter_paths_for_json( v ) for v in val )
-        elif issubclass( type( val ), set ):
-            return list( filter_paths_for_json( v ) for v in val )
-        elif issubclass( type( val ), dict ):
-            return type( val )( (
-                filter_paths_for_json( k ),
-                filter_paths_for_json( v )
-            ) for k, v in val.items() )
-        else:
-            return val
+    def filter( val ):
+        try:
+            return val.as_posix()
+        except AttributeError:
+            # `tuple` can only be replaced
+            if issubclass( type( val ), tuple ):
+                return type( val )( filter( v ) for v in val )
+            # `json` can't understand `set`
+            elif issubclass( type( val ), set ):
+                return list( filter( v ) for v in val )
+            
+            # `list` and `dict` can be modified in-place
+            elif issubclass( type( val ), list ):
+                for i in range( len( val ) ):
+                    val[ i ] = filter( val[ i ] )
+                return val
+            elif issubclass( type( val ), dict ):
+                for k in tuple( val.keys() ):
+                    v = val[ k ]
+                    del val[ k ]
+                    val[ filter( k ) ] = filter( v )
+                return val
+            
+            # Return anything else as-is
+            else:
+                return val
+    
+    return filter( copy.deepcopy( val ) )
 
 
 class TransmissionServer( object ):
@@ -85,7 +101,7 @@ class TransmissionServer( object ):
         
         message = {
             "method"    : method,
-            "arguments" : filter_paths_for_json( arguments ),
+            "arguments" : filter_paths( arguments ),
         }
         
         self.log.debug( "performing RPC to {}: {}".format(
