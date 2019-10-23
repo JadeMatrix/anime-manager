@@ -75,3 +75,12 @@ parser.add_argument(
     help     = "when removing files/directories, delete rather than trash them",
     required = False
 )
+parser.add_argument(
+    "--rebuild",
+    action   = "store_true",
+    help     = (
+        "recreate all episode links from scratch (useful if the library "
+        "becomes corrupted)"
+    ),
+    required = False
+)

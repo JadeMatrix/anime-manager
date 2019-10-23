@@ -75,6 +75,21 @@ def reload_database( args ):
     exception = None
     
     try:
+        if args.rebuild:
+            log.info( "rebuilding library" )
+            for directory in cache[ "directories" ]:
+                if directory not in ( "media", "torrents", "trash", ):
+                    anime_manager.filesystem.trash_item(
+                        cache[ "directories" ][ directory ],
+                        (
+                            None if args.no_trash
+                            # Use the cached trash directory instead of the new
+                            # one in case the database update moves it
+                            else cache[ "directories" ][ "trash" ]
+                        ),
+                        args.dry_run
+                    )
+        
         # Make changes
         anime_manager.library.update(
             server,
