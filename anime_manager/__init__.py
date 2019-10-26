@@ -99,7 +99,7 @@ def reload_database( args ):
             args.dry_run
         )
         anime_manager.filesystem.cleanup_empty_dirs(
-            db[ "directories" ],
+            db[ "directories" ].values(),
             args.dry_run
         )
     except Exception as e:

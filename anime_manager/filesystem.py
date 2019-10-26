@@ -60,33 +60,42 @@ def ensure_not_exists( item, trash ):
 
 
 def cleanup_empty_dirs( directories, dry_run = False ):
-    """Recursively remove empty subdirectories in managed directories
+    """Recursively remove empty directories
     
     Args:
-        directories (dict): The "directories" entry from a full database
-        dry_run (bool):     Whether to skip actually removing directories
+        directories (iterable):
+                        Top-level names of directories to check
+        dry_run (bool): Whether to skip actually removing directories
     """
     
     def cleanup( path ):
-        if path.is_dir():
-            children = False
-            for child in path.iterdir():
-                children = not cleanup( child ) or children
-            if not children:
-                ( print if dry_run else log.debug )(
-                    "removing empty managed directory {!r}".format(
-                        path.as_posix()
-                    )
-                )
-                if not dry_run:
-                    path.rmdir()
+        if not path.exists():
+            if path.is_symlink():
+                log.error( "broken symlink detected: {!r}".format(
+                    path.as_posix()
+                ) )
                 return True
             else:
                 return False
+        elif not path.is_dir():
+            return True
+        
+        children = False
+        for child in path.iterdir():
+            children = cleanup( child ) or children
+        
+        if not children:
+            ( print if dry_run else log.debug )(
+                "removing empty managed directory {!r}".format(
+                    path.as_posix()
+                )
+            )
+            if not dry_run:
+                path.rmdir()
+        
+        return children
     
-    for name, path in directories.items():
-        if name == "media":
-            continue
+    for path in directories:
         cleanup( path )
 
 
