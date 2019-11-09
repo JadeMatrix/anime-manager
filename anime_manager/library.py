@@ -89,7 +89,21 @@ def show_link_for_episode( db, episode ):
         else:
             link = link / "Season {}".format( episode[ "season" ] )
     
-    if "episodes" in season and season[ "episodes" ] == 1:
+    if "episode" in episode:
+        episode_number = episode[ "episode" ]
+        if issubclass( type( episode_number ), ( str, bytes ) ):
+            try:
+                episode_number = int( episode[ "episode" ] )
+            except ( ValueError, TypeError ):
+                pass
+    else:
+        episode_number = None
+    
+    if (
+        "episodes" in season
+        and season[ "episodes" ] == 1
+        and episode_number == 1
+    ):
         if multiseason and not has_season_title:
             link = link / "{} - s{}.{}".format(
                 show[ "title" ],
@@ -104,9 +118,9 @@ def show_link_for_episode( db, episode ):
     else:
         try:
             try:
-                episode_string = "{:02d}".format( episode[ "episode" ] )
+                episode_string = "{:02d}".format( episode_number )
             except ValueError:
-                episode_string = "{:f}".format( episode[ "episode" ] )
+                episode_string = "{:f}".format( episode_number )
                 whole, decimal = episode_string.strip( "0" ).split(
                     ".",
                     maxsplit = 1
@@ -118,7 +132,7 @@ def show_link_for_episode( db, episode ):
             if multiseason and not has_season_title:
                 episode_string = "e" + episode_string
         except ValueError:
-            episode_string = " {}".format( episode[ "episode" ] )
+            episode_string = " {}".format( episode_number )
         
         if multiseason and not has_season_title:
             link = link / "{} - s{}{}.{}".format(
