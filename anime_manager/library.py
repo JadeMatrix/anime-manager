@@ -30,8 +30,7 @@ def year_quarter_for_torrent( db, hash ):
                 episode
     """
     
-    min_torrent_year    = 99999
-    min_torrent_quarter = "q9"
+    min = "9999q9"
     
     for episode in db[ "torrents" ][ hash ][ "episodes" ]:
         if "pattern" in episode:
@@ -44,13 +43,14 @@ def year_quarter_for_torrent( db, hash ):
         else:
             season = episode[ "show" ][ "seasons" ][ episode[ "season" ] - 1 ]
         
-        if season[ "year" ] < min_torrent_year:
-            min_torrent_year = season[ "year" ]
-        quarter = season_quarter_map[ season[ "season" ] ]
-        if quarter < min_torrent_quarter:
-            min_torrent_quarter = quarter
+        candidate = "{}{}".format(
+            season[ "year" ],
+            season_quarter_map[ season[ "season" ] ]
+        )
+        if candidate < min:
+            min = candidate
     
-    return "{}{}".format( min_torrent_year, min_torrent_quarter )
+    return min
 
 
 def show_link_for_episode( db, episode ):
