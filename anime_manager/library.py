@@ -193,7 +193,7 @@ def expand_episodes( server, db, hash ):
                     if field in pattern:
                         generated[ field ] = pattern[ field ]
                 
-                match = pattern[ "regex" ].match( file.as_posix() )
+                match = pattern[ "regex" ].search( file.as_posix() )
                 if not match:
                     continue
                 
