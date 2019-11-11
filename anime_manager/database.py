@@ -164,7 +164,7 @@ def normalize( db ):
                     except re.error as ree:
                         raise InvalidDatabaseError( (
                             "invalid episode regex for torrent ID {!r}: {!r}"
-                        ).format( torrent_hash, e ) )
+                        ).format( torrent_hash, ree ) )
                 
                 # TODO: Validation & normalization
                 continue
