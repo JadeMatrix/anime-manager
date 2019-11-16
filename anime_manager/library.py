@@ -2,6 +2,7 @@ import anime_manager.filesystem
 import anime_manager.torrents
 
 import logging
+import math
 import os.path
 import pathlib
 import time
@@ -81,13 +82,19 @@ def show_link_for_episode( db, episode ):
         link = link / episode[ "alt" ]
     
     if multiseason:
+        padding = int( math.log10( len( show[ "seasons" ] ) ) ) + 1
         if "title" in season:
-            link = link / "Season {} - {}".format(
+            link = link / "{:0{}} - {}".format(
                 episode[ "season" ],
+                padding,
                 season [ "title"  ]
             )
         else:
-            link = link / "Season {}".format( episode[ "season" ] )
+            link = link / "{:0{}} - Season {}".format(
+                episode[ "season" ],
+                padding,
+                episode[ "season" ]
+            )
     
     if "episode" in episode:
         episode_number = episode[ "episode" ]
@@ -116,23 +123,33 @@ def show_link_for_episode( db, episode ):
                 extension_placeholder
             )
     else:
+        use_e = multiseason and not has_season_title
         try:
+            padding = (
+                int( math.log10( season[ "episodes" ] ) )
+                if "episodes" in season else 1
+            ) + 1
             try:
-                episode_string = "{:02d}".format( episode_number )
+                episode_string = "{:0{}d}".format( episode_number, padding )
             except ValueError:
                 episode_string = "{:f}".format( episode_number )
                 whole, decimal = episode_string.strip( "0" ).split(
                     ".",
                     maxsplit = 1
                 )
-                episode_string = "{:02}.{}".format(
+                episode_string = "{:0{}}.{}".format(
                     int( whole ),
+                    padding,
                     decimal if decimal else 0
                 )
-            if multiseason and not has_season_title:
+            if use_e:
                 episode_string = "e" + episode_string
         except ValueError:
-            episode_string = " {}".format( episode_number )
+            episode_string = str( episode_number )
+            episode_string = "{}{}".format(
+                "e" if use_e and episode_string[ 0 ] in "0123456789" else " ",
+                episode_string
+            )
         
         if multiseason and not has_season_title:
             link = link / "{} - s{}{}.{}".format(
