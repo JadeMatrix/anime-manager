@@ -187,7 +187,7 @@ def relative_link_pair( dest, source ):
     return dest, source
 
 
-def expand_episodes( server, db, hash ):
+def expand_episodes( server, db, hash, dry_run = False ):
     """Expand a list of database episode entries
     
     Args:
@@ -195,6 +195,7 @@ def expand_episodes( server, db, hash ):
                     The Transmission server to use as a reference
         db (dict):  A full, unflattened database
         hash (str): The torrent hash
+        dry_run (bool):     Whether to skip actually executing actions
     
     Returns:
         list (dict):    A database list of torrent episodes with patterns
@@ -210,7 +211,13 @@ def expand_episodes( server, db, hash ):
             pattern = episode[ "pattern" ]
             match_fields = ( "episode", "season", "alt", )
             if torrent_files is None:
-                torrent_files = server.torrent_files( ( hash, ) )[ hash ]
+                try:
+                    torrent_files = server.torrent_files( ( hash, ) )[ hash ]
+                except anime_manager.torrents.RPCError:
+                    if dry_run:
+                        continue
+                    else:
+                        raise
             
             for torrent_file in torrent_files:
                 # File without top-level name, as expected in the database
@@ -358,7 +365,7 @@ def update( server, cache, db, trash, dry_run = False ):
             
             files = {}
             
-            for episode in expand_episodes( server, db, hash ):
+            for episode in expand_episodes( server, db, hash, dry_run ):
                 status = stati[ episode[ "show" ][ "title" ] ]
                 if "file" in episode:
                     file = episode[ "file" ]
