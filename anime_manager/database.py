@@ -175,7 +175,7 @@ def normalize( db ):
             if "season" in episode:
                 try:
                     episode[ "season" ] = int( episode[ "season" ] )
-                except ValueError as e:
+                except ( ValueError, TypeError ) as e:
                     raise InvalidDatabaseError( (
                         "invalid season number for torrent ID {!r}: {!r}"
                     ).format( torrent_hash, e ) )
@@ -208,7 +208,7 @@ def normalize( db ):
                         ).format( torrent_hash, field ) )
                 try:
                     season[ "year" ] = int( season[ "year" ] )
-                except ValueError as e:
+                except ( ValueError, TypeError ) as e:
                     raise InvalidDatabaseError( (
                         "invalid year for season for show for torrent  ID "
                         "{!r}: {!r}"
@@ -227,7 +227,7 @@ def normalize( db ):
                 if "episodes" in season:
                     try:
                         season[ "episodes" ] = int( season[ "episodes" ] )
-                    except ValueError as e:
+                    except ( ValueError, TypeError ) as e:
                         raise InvalidDatabaseError( (
                             "invalid episode count for season for show for "
                             "torrent ID {!r}: {!r}"
