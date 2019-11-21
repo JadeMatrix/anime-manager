@@ -310,9 +310,17 @@ def update( server, cache, db, trash, dry_run = False ):
     
     for hash in db[ "torrents" ]:
         location = (
-            db[ "directories" ][ "torrents" ]
-            / year_quarter_for_torrent( db, hash )
+            db[ "torrents" ][ hash ][ "location" ]
+            if "location" in db[ "torrents" ][ hash ]
+            else pathlib.Path()
         )
+        if not location.is_absolute():
+            location = (
+                db[ "directories" ][ "torrents" ]
+                / year_quarter_for_torrent( db, hash )
+                / location
+            )
+        
         source   = db[ "torrents" ][ hash ][ "source"   ]
         archived = db[ "torrents" ][ hash ][ "archived" ]
         

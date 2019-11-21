@@ -132,6 +132,18 @@ def normalize( db ):
         if "archived" not in torrent_config:
             torrent_config[ "archived" ] = False
         
+        if "location" in torrent_config:
+            try:
+                torrent_config[ "location" ] = pathlib.Path(
+                    torrent_config[ "location" ]
+                )
+            except TypeError:
+                raise InvalidDatabaseError(
+                    "torrent ID {!r} manual 'location' not a path".format(
+                        torrent_hash
+                    )
+                )
+        
         if "episodes" not in torrent_config:
             raise InvalidDatabaseError(
                 "torrent ID {!r} missing required key 'episodes'".format(
