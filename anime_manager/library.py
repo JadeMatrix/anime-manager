@@ -324,7 +324,7 @@ def update( server, cache, db, trash, dry_run = False ):
         source   = db[ "torrents" ][ hash ][ "source"   ]
         archived = db[ "torrents" ][ hash ][ "archived" ]
         
-        check_links = True
+        check_links = False
         
         if hash not in cache:
             server.add_torrents( ( {
@@ -338,6 +338,7 @@ def update( server, cache, db, trash, dry_run = False ):
                 "archived" : archived,
                 "files"    : {},
             }
+            check_links = True
         
         else:
             if location != cache[ hash ][ "location" ]:
@@ -346,6 +347,7 @@ def update( server, cache, db, trash, dry_run = False ):
                     "location" : location,
                 }, ), trash, dry_run )
                 cache[ hash ][ "location" ] = location
+                check_links = True
             
             if source != cache[ hash ][ "source" ]:
                 server.source_torrents( ( {
@@ -360,6 +362,17 @@ def update( server, cache, db, trash, dry_run = False ):
                     "started" : not archived,
                 }, ), trash, dry_run )
                 cache[ hash ][ "archived" ] = archived
+        
+        # If torrent contains any non-pattern episodes, check those links
+        # (pattern-generated episodes will always use correct download name of
+        # torrent)
+        check_links = sum(
+            (
+                "pattern" not in e
+                for e in db[ "torrents" ][ hash ][ "episodes" ]
+            ),
+            check_links
+        )
         
         if check_links:
             try:
