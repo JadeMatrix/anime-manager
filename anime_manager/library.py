@@ -365,6 +365,10 @@ def update( server, cache, db, trash, dry_run = False ):
                 True  : "stopped",
                 False : "started",
             }[ db[ "torrents" ][ hash ][ "archived" ] ]
+        elif cache[ hash ][ "status" ] == "stopped":
+            # This can be unset manually with the above, but is sticky on
+            # purpose to prevent excess requests to the server
+            torrent_status = "stopped"
         else:
             stats = server.torrent_stats( ( hash, ) )[ hash ]
             torrent_status = (
