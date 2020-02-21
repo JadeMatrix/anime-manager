@@ -305,11 +305,12 @@ def normalize_flatdb( server, flatdb ):
         entry[ "files" ] = files
         
         # Field "archived" changed to more generic "status" 01/20/2020 #########
-        archived = entry[ "archived" ]
-        del entry[ "archived" ]
-        if archived:
-            entry[ "status" ] = "stopped"
+        if "archived" in entry:
+            archived = entry[ "archived" ]
+            del entry[ "archived" ]
         else:
+            archived = False
+        if "status" not in entry:
             # Set all non-stopped entries to "checking" in case they haven't
             # finished checking; they should be updated during library update
-            entry[ "status" ] = "checking"
+            entry[ "status" ] = "stopped" if archived else "checking"
