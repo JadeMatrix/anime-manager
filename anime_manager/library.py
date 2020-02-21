@@ -367,10 +367,6 @@ def update( server, cache, db, trash, dry_run = False ):
             }[ db[ "torrents" ][ hash ][ "archived" ] ]
         else:
             stats = server.torrent_stats( ( hash, ) )[ hash ]
-            seeders = sum(
-                ts[ "seederCount" ]
-                for ts in stats[ "trackerStats" ]
-            )
             torrent_status = (
                 "checking" if stats[ "percentDone" ] is None
                 else {
