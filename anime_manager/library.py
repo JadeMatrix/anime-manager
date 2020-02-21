@@ -276,6 +276,39 @@ def expand_episodes( server, db, hash, dry_run = False ):
     return episodes
 
 
+def should_keep_seeding( hash, stats, dry_run = False ):
+    """Stats-based heuristic for automatically pausing completed torrents
+    
+    Args:
+        hash (str):     The torrent hash
+        stats (dict):   Output of `TransmissionServer.torrent_stats()`
+        dry_run (bool): Whether to skip actually executing actions
+    
+    Returns:
+        bool:   Whether the torrent should be seeding
+    """
+    
+    seeders = sum( ts[ "seederCount" ] for ts in stats[ "trackerStats" ] )
+    
+    for condition, explanation in (
+        ( seeders <= 1, "there are {} seeder(s)".format( seeders ), ),
+        (
+            stats[ "uploadRatio" ] < 2.0,
+            "upload ratio is {}".format( stats[ "uploadRatio" ] ),
+        ),
+    ):
+        if condition:
+            ( print if dry_run else log.debug )(
+                "should keep seeding {!r} because {}".format(
+                    hash,
+                    explanation
+                )
+            )
+            return True
+    
+    return False
+
+
 def update( server, cache, db, trash, dry_run = False ):
     """Run a library update
     
@@ -321,21 +354,40 @@ def update( server, cache, db, trash, dry_run = False ):
                 / location
             )
         
-        source   = db[ "torrents" ][ hash ][ "source"   ]
-        archived = db[ "torrents" ][ hash ][ "archived" ]
+        source = db[ "torrents" ][ hash ][ "source"   ]
         
-        check_links = True
+        if hash not in cache:
+            torrent_status = "checking"
+        elif "archived" in db[ "torrents" ][ hash ]:
+            # Always respect override in database
+            torrent_status = {
+                True  : "stopped",
+                False : "started",
+            }[ db[ "torrents" ][ hash ][ "archived" ] ]
+        else:
+            stats = server.torrent_stats( ( hash, ) )[ hash ]
+            seeders = sum(
+                ts[ "seederCount" ]
+                for ts in stats[ "trackerStats" ]
+            )
+            torrent_status = (
+                "checking" if stats[ "percentDone" ] is None
+                else {
+                    True  : "stopped",
+                    False : "started",
+                }[ not should_keep_seeding( hash, stats, dry_run ) ]
+            )
         
         if hash not in cache:
             server.add_torrents( ( {
                 "source"   : source,
                 "location" : location,
-                "started"  : not archived,
+                "started"  : torrent_status != "stopped",
             }, ), trash, dry_run )
             cache[ hash ] = {
                 "source"   : source,
                 "location" : location,
-                "archived" : archived,
+                "status"   : torrent_status,
                 "files"    : {},
             }
         
@@ -354,14 +406,27 @@ def update( server, cache, db, trash, dry_run = False ):
                 }, ), trash, dry_run )
                 cache[ hash ][ "source" ] = source
             
-            if archived != cache[ hash ][ "archived" ]:
-                server.status_torrents( ( {
-                    "hash"    : hash,
-                    "started" : not archived,
-                }, ), trash, dry_run )
-                cache[ hash ][ "archived" ] = archived
+            if torrent_status != cache[ hash ][ "status" ]:
+                ( print if dry_run else log.info )(
+                    "changing torrent {} status from {} to {}".format(
+                        hash,
+                        cache[ hash ][ "status" ],
+                        torrent_status
+                    )
+                )
+                
+                started       = torrent_status            != "stopped"
+                cache_started = cache[ hash ][ "status" ] != "stopped"
+                
+                if started != cache_started:
+                    server.status_torrents( ( {
+                        "hash"    : hash,
+                        "started" : started,
+                    }, ), trash, dry_run )
+                
+                cache[ hash ][ "status" ] = torrent_status
         
-        if check_links:
+        if torrent_status == "checking":
             try:
                 name = server.torrent_names( ( hash, ) )[ hash ]
             except anime_manager.torrents.RPCError:

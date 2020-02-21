@@ -376,3 +376,60 @@ class TransmissionServer( object ):
             )
         else:
             return files
+    
+    def torrent_stats( self, torrents ):
+        """Get various statistics of the specified torrents
+        
+        Args:
+            torrents (iterable): Set of torrent hashes
+        
+        Returns:
+            dict:   A map in the format:
+                {
+                    hash : {
+                        "uploadRatio"  : float,
+                        "percentDone"  : float | None,
+                        "trackerStats" : { ... },
+                    },
+                    ...
+                }
+        
+        See:
+            Transmission structure `trackerStats` for "trackerStats" fields
+        """
+        
+        torrents = list( torrents )
+        
+        stats = dict(
+            ( t[ "hashString" ], {
+                "uploadRatio"  : t[ "uploadRatio" ],
+                "percentDone"  : (
+                    # Convert NaN to `None`
+                    t[ "percentDone" ]
+                    if t[ "percentDone" ] == t[ "percentDone" ]
+                    else None
+                ),
+                "trackerStats" : t[ "trackerStats" ],
+            } ) for t in self.rpc(
+                "torrent-get",
+                {
+                    "ids"    : torrents,
+                    "fields" : (
+                        "hashString",
+                        "uploadRatio",
+                        "percentDone",
+                        "trackerStats",
+                    ),
+                }
+            )[ "torrents" ]
+        )
+        
+        failed_hashes = set( torrents ) - set( stats.keys() )
+        if failed_hashes:
+            raise RPCError(
+                self.location,
+                "success", # Server itself will report success
+                "no such torrent(s): {}".format( ", ".join( failed_hashes ) )
+            )
+        else:
+            return stats

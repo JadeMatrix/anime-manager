@@ -129,9 +129,6 @@ def normalize( db ):
                 )
             )
         
-        if "archived" not in torrent_config:
-            torrent_config[ "archived" ] = False
-        
         if "location" in torrent_config:
             try:
                 torrent_config[ "location" ] = pathlib.Path(
@@ -306,4 +303,13 @@ def normalize_flatdb( server, flatdb ):
             else:
                 files[ dest ] = source
         entry[ "files" ] = files
-
+        
+        # Field "archived" changed to more generic "status" 01/20/2020 #########
+        archived = entry[ "archived" ]
+        del entry[ "archived" ]
+        if archived:
+            entry[ "status" ] = "stopped"
+        else:
+            # Set all non-stopped entries to "checking" in case they haven't
+            # finished checking; they should be updated during library update
+            entry[ "status" ] = "checking"
