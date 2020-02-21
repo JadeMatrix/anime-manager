@@ -72,6 +72,7 @@ def show_link_for_episode( db, episode ):
     
     show = episode[ "show" ]
     multiseason = len( show[ "seasons" ] ) > 1
+    # multiseason = sum( "title" not in s for s in show[ "seasons" ][ 1 : ] )
     season = show[ "seasons" ][ episode[ "season" ] - 1 ]
     has_season_title = "title" in season
     season_title = season[ "title" ] if has_season_title else show[ "title" ]

@@ -124,6 +124,46 @@ class TransmissionServer( object ):
         
         return response_content[ "arguments" ]
     
+    def mapped_rpc( self, torrents, fields ):
+        """Perform a basic torrent-get RPC for a set of torrents
+        
+        Args:
+            torrents (iterable): Set of torrent hashes
+            fields (iterable):   Set of torrent fields
+        
+        Returns:
+            dict:   The RPC response converted into the format:
+                {
+                    hash : {
+                        field : value,
+                        ...
+                    },
+                    ...
+                }
+        """
+        
+        torrents = list( torrents )
+        
+        result = dict(
+            ( t[ "hashString" ], t ) for t in self.rpc(
+                "torrent-get",
+                {
+                    "ids"    : torrents,
+                    "fields" : ( "hashString", *list( fields ) ),
+                }
+            )[ "torrents" ]
+        )
+        
+        failed_hashes = set( torrents ) - set( result.keys() )
+        if failed_hashes:
+            raise RPCError(
+                self.location,
+                "success", # Server itself will report success
+                "no such torrent(s): {}".format( ", ".join( failed_hashes ) )
+            )
+        else:
+            return result
+    
     def remove_torrents( self, torrents, trash, dry_run = False ):
         """Execute a set of remove-torrent actions
         
@@ -319,27 +359,10 @@ class TransmissionServer( object ):
             dict:   A map of the specified torrent hashes to their name
         """
         
-        torrents = list( torrents )
-        
-        names = dict(
-            ( t[ "hashString" ], t[ "name" ] ) for t in self.rpc(
-                "torrent-get",
-                {
-                    "ids"    : torrents,
-                    "fields" : ( "hashString", "name", ),
-                }
-            )[ "torrents" ]
-        )
-        
-        failed_hashes = set( torrents ) - set( names.keys() )
-        if failed_hashes:
-            raise RPCError(
-                self.location,
-                "success", # Server itself will report success
-                "no such torrent(s): {}".format( ", ".join( failed_hashes ) )
-            )
-        else:
-            return names
+        return dict( ( key, val[ "name" ] ) for key, val in self.mapped_rpc(
+            torrents,
+            ( "name", )
+        ).items() )
     
     def torrent_files( self, torrents ):
         """Get the names of files included in the specified torrents
@@ -352,30 +375,10 @@ class TransmissionServer( object ):
                     as `pathlib.Path`s
         """
         
-        torrents = list( torrents )
-        
-        files = dict(
-            (
-                t[ "hashString" ],
-                list( pathlib.Path( f[ "name" ] ) for f in t[ "files" ] )
-            ) for t in self.rpc(
-                "torrent-get",
-                {
-                    "ids"    : torrents,
-                    "fields" : ( "hashString", "files", ),
-                }
-            )[ "torrents" ]
-        )
-        
-        failed_hashes = set( torrents ) - set( files.keys() )
-        if failed_hashes:
-            raise RPCError(
-                self.location,
-                "success", # Server itself will report success
-                "no such torrent(s): {}".format( ", ".join( failed_hashes ) )
-            )
-        else:
-            return files
+        return dict( ( key, val[ "files" ] ) for key, val in self.mapped_rpc(
+            torrents,
+            ( "files", )
+        ).items() )
     
     def torrent_stats( self, torrents ):
         """Get various statistics of the specified torrents
@@ -398,38 +401,20 @@ class TransmissionServer( object ):
             Transmission structure `trackerStats` for "trackerStats" fields
         """
         
-        torrents = list( torrents )
-        
-        stats = dict(
-            ( t[ "hashString" ], {
-                "uploadRatio"  : t[ "uploadRatio" ],
-                "percentDone"  : (
-                    # Convert NaN to `None`
-                    t[ "percentDone" ]
-                    if t[ "percentDone" ] == t[ "percentDone" ]
-                    else None
-                ),
-                "trackerStats" : t[ "trackerStats" ],
-            } ) for t in self.rpc(
-                "torrent-get",
-                {
-                    "ids"    : torrents,
-                    "fields" : (
-                        "hashString",
-                        "uploadRatio",
-                        "percentDone",
-                        "trackerStats",
-                    ),
-                }
-            )[ "torrents" ]
-        )
-        
-        failed_hashes = set( torrents ) - set( stats.keys() )
-        if failed_hashes:
-            raise RPCError(
-                self.location,
-                "success", # Server itself will report success
-                "no such torrent(s): {}".format( ", ".join( failed_hashes ) )
+        return dict( ( key, {
+            "uploadRatio"  : val[ "uploadRatio" ],
+            "percentDone"  : (
+                # Convert NaN to `None`
+                val[ "percentDone" ]
+                if val[ "percentDone" ] == val[ "percentDone" ]
+                else None
+            ),
+            "trackerStats" : val[ "trackerStats" ],
+        } ) for key, val in self.mapped_rpc(
+            torrents,
+            (
+                "uploadRatio",
+                "percentDone",
+                "trackerStats",
             )
-        else:
-            return stats
+        ).items() )
