@@ -5,11 +5,12 @@ import json
 import logging
 import os.path
 import pathlib
+import verboselogs
 
 import requests
 
 
-log = logging.getLogger( __name__ )
+log = verboselogs.VerboseLogger( __name__ )
 
 sid_header = "X-Transmission-Session-Id"
 
@@ -60,7 +61,7 @@ class TransmissionServer( object ):
     def __init__( self, location ):
         self.location = location
         self.session  = requests.Session()
-        self.log      = logging.getLogger( "{}.{}".format(
+        self.log      = verboselogs.VerboseLogger( "{}.{}".format(
             self.__class__.__module__,
             self.__class__.__name__
         ) )
@@ -178,7 +179,7 @@ class TransmissionServer( object ):
         torrents = tuple( torrents )
         
         for hash in torrents:
-            ( print if dry_run else log.debug )(
+            ( print if dry_run else self.log.verbose )(
                 "removing torrent {}".format( hash )
             )
         
@@ -218,13 +219,13 @@ class TransmissionServer( object ):
             dry_run (bool): Whether to skip actually executing actions
         """
         for torrent in torrents:
-            ( print if dry_run else log.debug )(
+            ( print if dry_run else self.log.verbose )(
                 "adding source for torrent {!r} from {}".format(
                     torrent[ "hash" ],
                     torrent[ "source" ]
                 )
             )
-            log.warning( "{}.{}.source_torrents() not implemented".format(
+            self.log.warning( "{}.{}.source_torrents() not implemented".format(
                 self.__class__.__module__,
                 self.__class__.__name__
             ) )
@@ -245,13 +246,12 @@ class TransmissionServer( object ):
         """
         
         for torrent in torrents:
-            (
-                print if dry_run
-                else log.debug
-            )( "moving torrent {} to {!r}".format(
-                torrent[ "hash" ],
-                torrent[ "location" ].as_posix()
-            ) )
+            ( print if dry_run  else self.log.verbose )(
+                "moving torrent {} to {!r}".format(
+                    torrent[ "hash" ],
+                    torrent[ "location" ].as_posix()
+                )
+            )
             
             if not dry_run:
                 self.rpc(
@@ -285,7 +285,7 @@ class TransmissionServer( object ):
         for torrent in torrents:
             start = torrent[ "started" ]
             
-            ( print if dry_run else log.debug )(
+            ( print if dry_run else self.log.verbose )(
                 "setting torrent {} to {}".format(
                     torrent[ "hash" ],
                     "started" if start else "stopped"
@@ -298,7 +298,7 @@ class TransmissionServer( object ):
                 else ( to_stop, to_start ) 
             )
             if torrent[ "hash" ] in other:
-                log.warning( "previous request to {} torrent {}, {}".format(
+                self.log.warning( "previous request to {} torrent {}, {}".format(
                     "stop" if start else "start",
                     hash,
                     "starting" if start else "stopping"
@@ -333,7 +333,7 @@ class TransmissionServer( object ):
         """
         
         for torrent in torrents:
-            ( print if dry_run else log.debug )(
+            ( print if dry_run else self.log.verbose )(
                 "adding torrent to {!r} from {}".format(
                     torrent[ "location" ].as_posix(),
                     torrent[ "source" ]

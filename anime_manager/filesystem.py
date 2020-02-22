@@ -2,9 +2,10 @@ import logging
 import pathlib
 import shutil
 import uuid
+import verboselogs
 
 
-log = logging.getLogger( __name__ )
+log = verboselogs.VerboseLogger( __name__ )
 
 
 def trash_item( item, trash_directory ):
@@ -73,7 +74,7 @@ def cleanup_empty_dirs( directories, dry_run = False ):
             for child in path.iterdir():
                 children = not cleanup( child ) or children
             if not children:
-                ( print if dry_run else log.debug )(
+                ( print if dry_run else log.verbose )(
                     "removing empty managed directory {!r}".format(
                         path.as_posix()
                     )
@@ -102,7 +103,7 @@ def remove_links( links, trash, dry_run = False ):
     """
     
     for link in links:
-        ( print if dry_run else log.debug )(
+        ( print if dry_run else log.verbose )(
             "removing link {!r}".format( link.as_posix() )
         )
         if not dry_run:
@@ -124,10 +125,12 @@ def add_links( links, trash, dry_run = False ):
     """
     
     for dest, source in links.items():
-        ( print if dry_run else log.debug )( "adding link {!r} -> {!r}".format(
-            dest  .as_posix(),
-            source.as_posix()
-        ) )
+        ( print if dry_run else log.verbose )(
+            "adding link {!r} -> {!r}".format(
+                dest  .as_posix(),
+                source.as_posix()
+            )
+        )
         
         if not dry_run:
             ensure_not_exists( dest, trash )

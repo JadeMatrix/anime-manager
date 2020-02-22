@@ -6,9 +6,10 @@ import math
 import os.path
 import pathlib
 import time
+import verboselogs
 
 
-log = logging.getLogger( __name__ )
+log = verboselogs.VerboseLogger( __name__ )
 
 season_quarter_map = {
     "winter" : "q1",
@@ -299,8 +300,8 @@ def should_keep_seeding( hash, stats, dry_run = False ):
         ),
     ):
         if condition:
-            ( print if dry_run else log.debug )(
-                "should keep seeding {!r} because {}".format(
+            ( print if dry_run else log.verbose )(
+                "should keep seeding torrent {!r} because {}".format(
                     hash,
                     explanation
                 )

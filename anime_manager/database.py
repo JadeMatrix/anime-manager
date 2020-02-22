@@ -5,11 +5,12 @@ import logging
 import os.path
 import pathlib
 import re
+import verboselogs
 
 import yaml
 
 
-log = logging.getLogger( __name__ )
+log = verboselogs.VerboseLogger( __name__ )
 
 hash_regex = r"[0-9a-fA-F]{40}"
 

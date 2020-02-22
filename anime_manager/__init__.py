@@ -9,13 +9,14 @@ import os
 import pathlib
 import sys
 import time
+import verboselogs
 
 import watchdog.observers
 import watchdog.events
 import yaml
 
 
-log = logging.getLogger( __name__ )
+log = verboselogs.VerboseLogger( __name__ )
 
 
 def configure_logging( args ):
@@ -86,7 +87,7 @@ def reload_database( args ):
     if not args.dry_run:
         with open( cache_db, "w" ) as cache_file:
             yaml.dump( cache, cache_file )
-            log.info( "saved new flat database cache" )
+            log.success( "saved new flat database cache" )
     
     # Finally, re-raise any exceptions thrown by update:
     if exception is not None:
@@ -133,6 +134,7 @@ def run_update( argv = sys.argv[ 1 : ] ):
     
     args = anime_manager.arguments.parser.parse_args( argv )
     configure_logging( args )
+    log.success( "running single update" )
     reload_database( args )
 
 
@@ -147,7 +149,7 @@ def run_daemon( argv = sys.argv[ 1 : ] ):
     
     configure_logging( args )
     
-    log.info( "starting" )
+    log.success( "starting" )
     
     observer = watchdog.observers.Observer()
     observer.schedule(
@@ -164,7 +166,7 @@ def run_daemon( argv = sys.argv[ 1 : ] ):
         log.info( "shutting down..." )
         observer.stop()
         observer.join()
-        log.info( "exited cleanly" )
+        log.success( "exited cleanly" )
     
     except Exception as e:
         log.exception( "exception thrown while waiting for observer" )

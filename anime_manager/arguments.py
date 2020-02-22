@@ -53,9 +53,13 @@ parser.add_argument(
     choices  = [
         "CRITICAL",
         "ERROR",
+        "SUCCESS",
         "WARNING",
+        "NOTICE",
         "INFO",
+        "VERBOSE",
         "DEBUG",
+        "SPAM",
         "NOTSET",
     ],
     default  = "INFO",
