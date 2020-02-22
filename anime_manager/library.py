@@ -278,21 +278,36 @@ def expand_episodes( server, db, hash, dry_run = False ):
     return episodes
 
 
-def should_keep_seeding( hash, stats, dry_run = False ):
-    """Stats-based heuristic for automatically pausing completed torrents
+def status_for_torrent( server, hash, dry_run ):
+    """Stats-based heuristic for automatically starting & stopping torrents
     
     Args:
+        server (torrents.TransmissionServer):
+                    The Transmission server to use as a reference
         hash (str):     The torrent hash
-        stats (dict):   Output of `TransmissionServer.torrent_stats()`
         dry_run (bool): Whether to skip actually executing actions
     
     Returns:
-        bool:   Whether the torrent should be seeding
+        str:    The proper status for the torrent, one of "checking", "started",
+                or "stopped"
     """
+
+    stats = server.torrent_stats( ( hash, ) )[ hash ]
+    
+    if stats[ "percentDone" ] is None:
+        ( print if dry_run else log.verbose )(
+            "still checking torrent {}".format( hash )
+        )
+        return checking
     
     seeders = sum( ts[ "seederCount" ] for ts in stats[ "trackerStats" ] )
     
     for condition, explanation in (
+        ( stats[ "percentDone" ] is None, "it has not started" ),
+        (
+            stats[ "percentDone" ] < 1.0,
+            "it is at {:06.2f}%".format( stats[ "percentDone" ] * 100 )
+        ),
         ( seeders <= 1, "there are {} seeder(s)".format( seeders ), ),
         (
             stats[ "uploadRatio" ] < 2.0,
@@ -306,9 +321,9 @@ def should_keep_seeding( hash, stats, dry_run = False ):
                     explanation
                 )
             )
-            return True
+            return "started"
     
-    return False
+    return "stopped"
 
 
 def update( server, cache, db, trash, dry_run = False ):
@@ -371,14 +386,7 @@ def update( server, cache, db, trash, dry_run = False ):
             # purpose to prevent excess requests to the server
             torrent_status = "stopped"
         else:
-            stats = server.torrent_stats( ( hash, ) )[ hash ]
-            torrent_status = (
-                "checking" if stats[ "percentDone" ] is None
-                else {
-                    True  : "stopped",
-                    False : "started",
-                }[ not should_keep_seeding( hash, stats, dry_run ) ]
-            )
+            torrent_status = status_for_torrent( server, hash, dry_run )
         
         if hash not in cache:
             server.add_torrents( ( {
