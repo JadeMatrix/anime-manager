@@ -296,14 +296,13 @@ def status_for_torrent( server, hash, dry_run ):
     
     if stats[ "percentDone" ] is None:
         ( print if dry_run else log.verbose )(
-            "still checking torrent {}".format( hash )
+            "torrent {} has not started".format( hash )
         )
-        return checking
+        return "checking"
     
     seeders = sum( ts[ "seederCount" ] for ts in stats[ "trackerStats" ] )
     
     for condition, explanation in (
-        ( stats[ "percentDone" ] is None, "it has not started" ),
         (
             stats[ "percentDone" ] < 1.0,
             "it is at {:06.2f}%".format( stats[ "percentDone" ] * 100 )
