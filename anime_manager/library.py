@@ -315,7 +315,7 @@ def status_for_torrent( server, hash, dry_run ):
     ):
         if condition:
             ( print if dry_run else log.verbose )(
-                "should keep seeding torrent {!r} because {}".format(
+                "should keep torrent {!r} active because {}".format(
                     hash,
                     explanation
                 )
