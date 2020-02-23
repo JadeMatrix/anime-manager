@@ -374,14 +374,17 @@ def update( server, cache, db, trash, dry_run = False ):
         
         if hash not in cache:
             torrent_status = "checking"
+            torrent_status_prev = None
         elif "archived" in db[ "torrents" ][ hash ]:
             # Always respect override in database
             torrent_status = {
                 True  : "stopped",
                 False : "started",
             }[ db[ "torrents" ][ hash ][ "archived" ] ]
+            torrent_status_prev = cache[ hash ][ "status" ]
         else:
             torrent_status = status_for_torrent( server, hash, dry_run )
+            torrent_status_prev = cache[ hash ][ "status" ]
         
         if hash not in cache:
             server.add_torrents( ( {
@@ -431,7 +434,7 @@ def update( server, cache, db, trash, dry_run = False ):
                 
                 cache[ hash ][ "status" ] = torrent_status
         
-        if torrent_status == "checking":
+        if "checking" in ( torrent_status, torrent_status_prev ):
             try:
                 name = server.torrent_names( ( hash, ) )[ hash ]
             except anime_manager.torrents.RPCError:
