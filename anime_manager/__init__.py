@@ -11,7 +11,7 @@ import sys
 import time
 import verboselogs
 
-import watchdog.observers
+import watchdog.observers.polling
 import watchdog.events
 import yaml
 
@@ -104,15 +104,17 @@ class AutoManageTorrentsHandler( watchdog.events.FileSystemEventHandler ):
             exit( 0 )
         watchdog.events.FileSystemEventHandler.__init__( self )
     
-    def on_modified( self, event ):
-        if (
-            pathlib.Path( event.src_path ) == self.args.database
-            and event.event_type in (
-                watchdog.events.EVENT_TYPE_CREATED,
-                watchdog.events.EVENT_TYPE_MODIFIED,
-            )
+    def on_any_event( self, event ):
+        is_watched_file = pathlib.Path( event.src_path ) == self.args.database
+        
+        ( log.verbose if is_watched_file else log.debug )(
+            "got filesystem event: {!r}".format( event )
+        )
+        
+        if is_watched_file and event.event_type in (
+            watchdog.events.EVENT_TYPE_CREATED,
+            watchdog.events.EVENT_TYPE_MODIFIED,
         ):
-            log.debug( "got event for {}".format( event.src_path ) )
             log.info( "reloading database" )
             self.reload()
     
@@ -151,7 +153,7 @@ def run_daemon( argv = sys.argv[ 1 : ] ):
     
     log.success( "starting" )
     
-    observer = watchdog.observers.Observer()
+    observer = watchdog.observers.polling.PollingObserver()
     observer.schedule(
         AutoManageTorrentsHandler( args ),
         args.database.parent.as_posix()
