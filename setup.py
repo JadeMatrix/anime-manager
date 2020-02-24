@@ -23,7 +23,7 @@ setuptools.setup(
     
     install_requires = [
         "watchdog>=0.9",
-        "PyYAML>=5.1.2",
+        "PyYAML>=5.1.2,<5.2",
         "requests>=2.22,<3",
         "verboselogs>=1.7",
     ]
