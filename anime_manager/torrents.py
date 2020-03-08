@@ -375,7 +375,9 @@ class TransmissionServer( object ):
                     as `pathlib.Path`s
         """
         
-        return dict( ( key, val[ "files" ] ) for key, val in self.mapped_rpc(
+        return dict( ( key, [
+            pathlib.Path( f[ "name" ] ) for f in val[ "files" ]
+        ] ) for key, val in self.mapped_rpc(
             torrents,
             ( "files", )
         ).items() )
