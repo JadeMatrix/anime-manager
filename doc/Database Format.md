@@ -39,11 +39,17 @@ Each series is a dictionary with two keys: `title` and `seasons`.  It should als
 
 ## Torrents
 
-`torrents` is a dictionary containing download information & episode mappings.  Each key is the torrent's hash ID; while hashes are not case-sensitive, YAML dictionary keys are, so these should either be all uppercase or all lowercase.  Each item is a dictionary with two keys: `source` and `episodes`.
+`torrents` is a dictionary containing download information & episode mappings.  Each key is the torrent's hash ID; while hashes are not case-sensitive, YAML dictionary keys are, so these should either be all uppercase or all lowercase.  Each item is a dictionary with two required keys — `source` and `episodes` — and and optional `status` key.
 
 `source` is the download URN or path for the torrent metadata.  It can either be a URL, magnet link, or filename; it is passed to Transmission as-is.
 
-`episodes` contains a list of mappings of files in the torrent to episodes.  There are two general mapping formats: manual and pattern-based.
+`episodes` contains a list of mappings of files in the torrent to episodes.  There are two general mapping formats — manual and pattern-based — which are described in the next two sections.
+
+`status` allows manually setting a download status for that torrent (see [*Automatic torrent management*](Usage.md#Automatic-torrent-management)).  The possible values are:
+
+* `started` — the torrent will be started and never automatically stopped
+* `stopped` — the torrent will be paused and never automatically restarted
+* `checking` — the torrent will be re-checked for broken or mising files; this is typically only useful temporarily (e.g. for library recovery) as a re-check will be triggered every time an update is run
 
 
 ### Manual mappings
