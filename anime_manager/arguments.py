@@ -43,7 +43,7 @@ parser.add_argument(
     "--log-file",
     metavar  = "FILENAME",
     action   = AbsPathAction,
-    help     = "log file to use (defaults to 'log' in the cache directory",
+    help     = "log file to use (defaults to 'log' in the cache directory)",
     required = False
 )
 parser.add_argument(
