@@ -386,6 +386,8 @@ def update( server, cache, db, trash, dry_run = False ):
             torrent_status = status_for_torrent( server, hash, dry_run )
             torrent_status_prev = cache[ hash ][ "status" ]
         
+        check_links = "checking" in ( torrent_status, torrent_status_prev )
+        
         if hash not in cache:
             server.add_torrents( ( {
                 "source"   : source,
@@ -406,6 +408,7 @@ def update( server, cache, db, trash, dry_run = False ):
                     "location" : location,
                 }, ), trash, dry_run )
                 cache[ hash ][ "location" ] = location
+                check_links = True
             
             if source != cache[ hash ][ "source" ]:
                 server.source_torrents( ( {
@@ -434,7 +437,7 @@ def update( server, cache, db, trash, dry_run = False ):
                 
                 cache[ hash ][ "status" ] = torrent_status
         
-        if "checking" in ( torrent_status, torrent_status_prev ):
+        if check_links:
             try:
                 name = server.torrent_names( ( hash, ) )[ hash ]
             except anime_manager.torrents.RPCError:
