@@ -23,7 +23,7 @@ The rest of the directories can be either absolute or relative paths.  If they a
 
 ## Shows
 
-`shows` is a dictionary that with an item for each watching status (`rainy day`, `in progress`, `archived`), each of which holds a list of series.
+`shows` is a dictionary with an item for each watching status (`rainy day`, `in progress`, `archived`), each of which holds a list of series.
 
 Each series is a dictionary with two keys: `title` and `seasons`.  It should also have a YAML anchor so that torrent entries can refer to it.  The `title` must be unique, as this is used as the name of the directory under which to place its season directories.
 
