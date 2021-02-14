@@ -26,30 +26,6 @@ class InvalidDatabaseError( Exception ):
         )
 
 
-def empty_database():
-    """Get an empty full database
-    
-    Returns:
-        dict
-    """
-    
-    return {
-        "directories" : {
-            "media"       : None,
-            "torrents"    : None,
-            "in progress" : None,
-            "archived"    : None,
-            "rainy day"   : None,
-        },
-        "shows" : {
-            "in progress" : [],
-            "archived"    : [],
-            "rainy day"   : [],
-        },
-        "torrents" : {}
-    }
-
-
 def empty_flatdb():
     """Get an empty flat database
     
