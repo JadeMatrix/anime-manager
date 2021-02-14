@@ -437,7 +437,8 @@ def update( server, cache, db, trash, dry_run = False ):
                 
                 cache[ hash ][ "status" ] = torrent_status
         
-        if check_links:
+        # if check_links:
+        if True:
             try:
                 name = server.torrent_names( ( hash, ) )[ hash ]
             except anime_manager.torrents.RPCError:
