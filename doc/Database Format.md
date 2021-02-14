@@ -8,7 +8,7 @@ The database consists of a single [YAML](https://yaml.org/) file.  The root node
 
 ## Directories
 
-`directories` is a dictionary that configures where the library sections are stored.  It has six optional items: `media`, `torrents`, `trash`, and one for each of the three watching statuses (`rainy day`, `in progress`, `archived`).
+`directories` is a dictionary that configures where the library sections are stored.  It has several optional items: `media`, `torrents`, `trash`, and one item for each of your preferred watching statuses.
 
 The `media` directory is the default library "root" under which other directories are placed; it defaults to the current working directory.  It is suggested you set this to the absolute directory you'd like your entire library stored under.
 
@@ -18,12 +18,12 @@ The rest of the directories can be either absolute or relative paths.  If they a
 
 `trash` is where torrent files no longer managed by the database are placed; it defaults to `.Trash/`.  Each torrent download is placed in a subdirectory starting with a random [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) followed by the full original path to that download.
 
-`rainy day`, `in progress`, and `archived` are the names of the directories under which shows in each status will be placed.  They default to `Rainy Day/`, `In Progress`, and `Archived`, respectively.
+The rest of the items are the directories under which shows in that watch "status" will be placed.  The default name for each is the "status" key in title case (e.g. `in progress` becomes `In Progress`).  You can split up your shows however you want as long as there is at least one "status."
 
 
 ## Shows
 
-`shows` is a dictionary with an item for each watching status (`rainy day`, `in progress`, `archived`), each of which holds a list of series.
+`shows` is a dictionary with an item for each watching "status," each of which holds a list of series.
 
 Each series is a dictionary with two keys: `title` and `seasons`.  It should also have a YAML anchor so that torrent entries can refer to it.  The `title` must be unique, as this is used as the name of the directory under which to place its season directories.
 

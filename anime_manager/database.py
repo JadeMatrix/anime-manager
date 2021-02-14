@@ -67,21 +67,27 @@ def normalize( db ):
         else "."
     )
     
-    for field in (
-        ( "trash"      , ".Trash"     , ),
-        ( "torrents"   , ".Torrents"  , ),
-        ( "in progress", "In Progress", ),
-        ( "archived"   , "Archived"   , ),
-        ( "rainy day"  , "Rainy Day"  , ),
+    for status, default_dir in (
+        ( "trash"   , ".Trash"   , ),
+        ( "torrents", ".Torrents", ),
+    ) + tuple(
+        ( s, s.title(), )
+        for s in db[ "directories" ].keys() | db[ "shows" ].keys()
     ):
-        if field[ 0 ] in db[ "directories" ]:
-            directory = pathlib.Path( db[ "directories" ][ field[ 0 ] ]  )
+        if status in db[ "directories" ]:
+            directory = pathlib.Path( db[ "directories" ][ status ]  )
         else:
-            directory = pathlib.Path( field[ 1 ] )
+            directory = pathlib.Path( default_dir )
         if not directory.is_absolute():
             # Doesn't matter if media directory is absolute or not
             directory = db[ "directories" ][ "media" ] / directory
-        db[ "directories" ][ field[ 0 ] ] = directory
+        db[ "directories" ][ status ] = directory
+    
+    for status in db[ "shows" ].keys():
+        if status in ( "media", "trash", "torrents", ):
+            raise InvalidDatabaseError(
+                "{!r} cannot be used as a show status".format( status )
+            )
     
     # Normalize torrents & shows ###############################################
     
