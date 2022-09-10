@@ -170,6 +170,37 @@ def show_link_for_episode( db, episode ):
     return link
 
 
+def filter_path_for_smb( path ):
+    """Sanitize a path for exposing to SMB (Samba) network shares
+    
+    Args:
+        path (pathlib.Path):    The path to sanitize
+    
+    Returns:
+        pathlib.Path:   The sanitized path
+    """
+    
+    filtered_path = pathlib.Path()
+    
+    for part in path.parts:
+        if part == "/":
+            filtered_path /= part
+        else:
+            filtered_path /= part.translate( {
+                ord( "\"" ) : "~" ,
+                ord( "*"  ) : "~" ,
+                ord( "/"  ) : "-" ,
+                ord( ":"  ) : " -",
+                ord( "<"  ) : "~" ,
+                ord( ">"  ) : "~" ,
+                ord( "?"  ) : ""  ,
+                ord( "\\" ) : ""  ,
+                ord( "|"  ) : "-" ,
+            } )
+    
+    return filtered_path
+
+
 def relative_link_pair( dest, source ):
     """Modify a source & destination so that the source is relative, if possible
     
@@ -457,16 +488,29 @@ def update( server, cache, db, trash, dry_run = False ):
                 else:
                     file = pathlib.Path()
                 
-                source = cache[ hash ][ "location" ] / name / file
+                raw_source = cache[ hash ][ "location" ] / name / file
                 dest   = (
                     db[ "directories" ][ status ]
                     / show_link_for_episode( db, episode )
                 # Replace placeholder suffix with source's
-                ).with_suffix( source.suffix )
+                ).with_suffix( raw_source.suffix )
                 
-                dest, source = relative_link_pair( dest, source )
-                
+                dest, source = relative_link_pair( dest, raw_source )
                 files[ dest ] = source
+                
+                # Workaround for SMB shares
+                smb_dest = (
+                    db[ "directories" ][ status ]
+                    / "For SMB Shares"
+                    / filter_path_for_smb(
+                        show_link_for_episode( db, episode )
+                    )
+                ).with_suffix( raw_source.suffix )
+                smb_dest, smb_source = relative_link_pair(
+                    smb_dest,
+                    raw_source
+                )
+                files[ smb_dest ] = smb_source
             
             # Updating/creating links could be achieved by simply wiping out the
             # old ones & replacing, but I'd rather not potentially recreate a
