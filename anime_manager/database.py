@@ -63,8 +63,7 @@ def normalize( db ):
     # Normalize directories ####################################################
     
     db[ "directories" ][ "media" ] = pathlib.Path(
-        db[ "directories" ][ "media" ] if "media" in db[ "directories" ]
-        else "."
+        db[ "directories" ].get( "media", "." )
     )
     
     for status, default_dir in (
@@ -74,10 +73,9 @@ def normalize( db ):
         ( s, s.title(), )
         for s in db[ "directories" ].keys() | db[ "shows" ].keys()
     ):
-        if status in db[ "directories" ]:
-            directory = pathlib.Path( db[ "directories" ][ status ]  )
-        else:
-            directory = pathlib.Path( default_dir )
+        directory = pathlib.Path(
+            db[ "directories" ].get( status, default_dir )
+        )
         if not directory.is_absolute():
             # Doesn't matter if media directory is absolute or not
             directory = db[ "directories" ][ "media" ] / directory
