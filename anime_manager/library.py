@@ -501,7 +501,7 @@ def update( server, cache, db, trash, dry_run = False ):
                 # Workaround for SMB shares
                 smb_dest = (
                     db[ "directories" ][ status ]
-                    / "For SMB Shares"
+                    / " For SMB Shares"
                     / filter_path_for_smb(
                         show_link_for_episode( db, episode )
                     )
