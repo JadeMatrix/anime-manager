@@ -186,7 +186,7 @@ def filter_path_for_smb( path ):
         if part == "/":
             filtered_path /= part
         else:
-            filtered_path /= part.translate( {
+            filtered_part = part.translate( {
                 ord( "\"" ) : "~" ,
                 ord( "*"  ) : "~" ,
                 ord( "/"  ) : "-" ,
@@ -197,6 +197,9 @@ def filter_path_for_smb( path ):
                 ord( "\\" ) : ""  ,
                 ord( "|"  ) : "-" ,
             } )
+            if filtered_part.endswith( "." ):
+                filtered_part = filtered_part[ : -1 ]
+            filtered_path /= filtered_part
     
     return filtered_path
 
